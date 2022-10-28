@@ -66,38 +66,7 @@ impl Serialize for Redirect {
     }
 }
 
-fn syscall(
-    command: &str,
-    data: &serde_json::Value
-) -> Result<SyscallResult, wasi::Errno> {
-    Ok({
-        let j = data.to_string();
-        let c = json!({
-            "command": command,
-            "buf_len": j.len(),
-            "buf_ptr": format!("{:?}", j.as_ptr()),
-        }).to_string();
 
-        const BUF_LEN: usize = 1024;
-        let mut buf = vec![0u8; BUF_LEN];
-        unsafe {
-            let result_len = wasi::path_readlink(3, &format!("!{}", c), buf.as_mut_ptr(), BUF_LEN)?;
-            match str::from_utf8(&buf[0..result_len]) {
-                Ok(result) => {
-                    if let Some((exit_status, output)) = result.split_once("\x1b") {
-                        SyscallResult{
-                            exit_status: if let Ok(n) = exit_status.parse::<i32>() {
-                                n
-                            } else {
-                                return Err(wasi::ERRNO_BADMSG)
-                            },
-                            output: output.to_string()
-                        }
-                    } else {
-                        return Err(wasi::ERRNO_BADMSG)
-                    }
-                }
-                Err(_) => return Err(wasi::ERRNO_BADMSG)
             }
         }
     })
