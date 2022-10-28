@@ -44,6 +44,9 @@ int wasi_ext_isatty(int fd) {
 
 int wasi_ext_set_env(const char *attrib, const char *val) {
     char args[SYSCALL_ARGS_LENGTH];
+    char *env = malloc(strlen(attrib) + strlen(val) + 2);
+    sprintf(env, "%s=%s", attrib, val);
+    free(env);
     if (val != NULL) {
         sprintf(args, "{ \"attrib\": %s, \"val\": %s }", attrib, val);
     } else {
