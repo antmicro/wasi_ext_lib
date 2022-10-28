@@ -26,13 +26,13 @@ int wasi_ext_chdir(const char *path) {
     return __syscall("chdir", args, NULL, 0);
 }
 
-int wasi_ext_getcwd(const char *path, size_t buf_len) {
+int wasi_ext_getcwd(char *path, size_t buf_len) {
     char c[SYSCALL_ARGS_LENGTH];
     sprintf(c, "/!{\"buf\": %p, \"buf_len\": %zu}", path, buf_len);
     return __syscall("getcwd", c, (uint8_t*)path, buf_len);
 }
 
-int wasi_ext_isatty(__wasi_fd_t fd) {
+int wasi_ext_isatty(int fd) {
     char args[SYSCALL_ARGS_LENGTH];
     const size_t output_len = 64;
     char output[output_len];
@@ -42,7 +42,7 @@ int wasi_ext_isatty(__wasi_fd_t fd) {
     return atoi(output);
 }
 
-int wasi_ext_set_env(char *attrib, char *val) {
+int wasi_ext_set_env(const char *attrib, const char *val) {
     char args[SYSCALL_ARGS_LENGTH];
     if (val != NULL) {
         sprintf(args, "{ \"attrib\": %s, \"val\": %s }", attrib, val);

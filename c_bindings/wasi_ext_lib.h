@@ -4,9 +4,9 @@
 #include <stdlib.h>
 
 int wasi_ext_chdir(const char*);
-int wasi_ext_getcwd(const char*, size_t);
-int wasi_ext_isatty(__wasi_fd_t);
-int wasi_ext_set_env(char*, char*);
+int wasi_ext_getcwd(char*, size_t);
+int wasi_ext_isatty(int);
+int wasi_ext_set_env(const char*, const char*);
 
 #endif 
 
