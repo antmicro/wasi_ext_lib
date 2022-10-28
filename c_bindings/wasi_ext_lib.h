@@ -1,7 +1,6 @@
 #ifndef c_bindings_wasi_ext_lib_h_INCLUDED
 #define c_bindings_wasi_ext_lib_h_INCLUDED
 
-#include <wasi/api.h>
 #include <stdlib.h>
 
 int wasi_ext_chdir(const char*);
