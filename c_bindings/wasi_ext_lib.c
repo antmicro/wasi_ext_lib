@@ -12,7 +12,7 @@
 
 int __syscall(const char *command, char *args, uint8_t *output_buf, size_t output_buf_len) {
     char c[SYSCALL_LENGTH];
-    sprintf(c, "/!{\"command\": \"%s\" \"buf_len\": %ld \"buf_ptr\": %p}", command, strlen(args), args);
+    sprintf(c, "/!{\"command\": \"%s\", \"buf_len\": %ld, \"buf_ptr\": %p}", command, strlen(args), args);
 
     size_t written;
     int err = __wasi_path_readlink(3, c, output_buf, output_buf_len, &written);
@@ -28,7 +28,7 @@ int wasi_ext_chdir(const char *path) {
 
 int wasi_ext_getcwd(const char *path, size_t buf_len) {
     char c[SYSCALL_ARGS_LENGTH];
-    sprintf(c, "/!{\"buf\": %p \"buf_len\": %zu}", path, buf_len);
+    sprintf(c, "/!{\"buf\": %p, \"buf_len\": %zu}", path, buf_len);
     return __syscall("getcwd", c, (uint8_t*)path, buf_len);
 }
 
