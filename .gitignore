@@ -1,2 +1,3 @@
 /target
 /Cargo.lock
+src/wasi_ext_lib_generated.rs
