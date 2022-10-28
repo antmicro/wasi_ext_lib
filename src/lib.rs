@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 use std::str;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::ptr;
+use std::path::Path;
 use std::convert::AsRef;
 use std::ffi::CString;
 use std::os::wasi::ffi::OsStrExt;
 
-use serde_json::json;
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeStruct;
+mod wasi_ext_lib_generated;
 
 type ExitCode = i32;
-type Pid = u32;
+type Pid = i32;
 
 pub enum Redirect {
     Read((wasi::Fd, String)),
@@ -19,20 +19,16 @@ pub enum Redirect {
     Append((wasi::Fd, String)),
 }
 
-extern "C" {
-    pub(crate) fn wasi_ext_chdir(path: *const libc::c_char) -> i32;
-}
-
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
-    if let Ok(canon) = std::fs::canonicalize(&path) {
-        if let Err(_) = std::env::set_current_dir(&canon) {
+    if let Ok(canon) = fs::canonicalize(&path) {
+        if let Err(_) = env::set_current_dir(&canon) {
             return Err(wasi::ERRNO_NOENT.raw().into())
         };
         let pth = match CString::new(path.as_ref().as_os_str().as_bytes()) {
             Ok(p) => p,
             Err(_) => { return Err(wasi::ERRNO_INVAL.raw().into()) }
         };
-        match unsafe { wasi_ext_chdir(pth.as_ptr()) } {
+        match unsafe { wasi_ext_lib_generated::wasi_ext_chdir(pth.as_ptr()) } {
             0 => Ok(()),
             e => Err(e)
         }
