@@ -10,6 +10,12 @@
 #define SYSCALL_LENGTH 256
 #define SYSCALL_ARGS_LENGTH 2048
 
+enum redirect{
+    READ,
+    WRITE,
+    APPEND
+};
+
 int __syscall(const char *command, char *args, uint8_t *output_buf, size_t output_buf_len) {
     char c[SYSCALL_LENGTH];
     sprintf(c, "/!{\"command\": \"%s\", \"buf_len\": %ld, \"buf_ptr\": %p}", command, strlen(args), args);
@@ -54,3 +60,35 @@ int wasi_ext_set_env(const char *attrib, const char *val) {
     }
     return __syscall("set_env", args, NULL, 0);
 }
+
+int wasi_ext_getpid() {
+    char args[] = "{}";
+    const size_t output_len = 16;
+    char output[output_len];
+    int result = __syscall("getpid", args, (uint8_t*)output, output_len);
+    if (result != 0) {
+        return -result;
+    } else {
+        return atoi(output);
+    }
+}
+
+int wasi_ext_set_echo(int should_echo) {
+    char args[SYSCALL_ARGS_LENGTH];
+    sprintf(args, "{ \"echo\": %d }", should_echo);
+    return __syscall("set_echo", args, NULL, 0);
+}
+
+#ifdef HTERM
+int wasi_ext_hterm_set(const char* attrib, const char *val) {
+    char args[SYSCALL_ARGS_LENGTH];
+    sprintf(args, "{ \"method\": \"set\", \"attrib\": %s, \"val\": %s }", attrib, val);
+    return __syscall("hterm", args, NULL, 0);
+}
+
+int wasi_ext_hterm_get(const char* attrib, char *val, size_t val_len) {
+    char args[SYSCALL_ARGS_LENGTH];
+    sprintf(args, "{ \"method\": \"get\", \"attrib\": %s }", attrib);
+    return __syscall("hterm", args, (uint8_t*)val, val_len);
+}
+#endif
