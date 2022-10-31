@@ -2,15 +2,22 @@ extern crate bindgen;
 use std::env;
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=c_bindings/wasi_ext_lib.c");
+    println!("cargo:rerun-if-changed=c_bindings/wasi_ext_lib.h");
     cc::Build::new()
         .archiver(format!("{}/bin/ar", env!("WASI_SDK_PATH")))
         .file("c_bindings/wasi_ext_lib.c")
         .flag("-DHTERM")
+        .flag("-Wall")
+        .flag("-Wextra")
         .compile("wasi_ext_lib");
 
     println!("cargo:rustc-link-lib=static=wasi_ext_lib");
     println!("cargo:rerun-if-changed=c_bindings/wasi_ext_lib.h");
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=c_bindings/wasi_ext_lib.c");
+    println!("cargo:rerun-if-changed=src/lib.rs");
     bindgen::Builder::default()
         .header("c_bindings/wasi_ext_lib.h")
         .clang_arg(format!("--sysroot={}/share/wasi-sysroot", env!("WASI_SDK_PATH")))
