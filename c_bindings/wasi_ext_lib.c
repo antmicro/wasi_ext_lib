@@ -144,5 +144,11 @@ int wasi_ext_spawn(
     char call_args[SYSCALL_ARGS_LENGTH];
     json_stringify(root, call_args);
     json_delete(root);
-    return __syscall("spawn", call_args, NULL, 0);
+
+    const size_t output_len = 4;
+    char buf[output_len];
+    int result = __syscall("spawn", call_args, buf, output_len);
+    int status = atoi(buf);
+    if (status != 0) return -status;
+    else return result;
 }

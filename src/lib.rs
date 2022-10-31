@@ -19,6 +19,26 @@ pub enum Redirect {
     Append((wasi::Fd, String)),
 }
 
+unsafe fn get_c_redirect(r: &Redirect) -> wasi_ext_lib_generated::Redirect{
+    match r {
+        Redirect::Read((fd, path)) => { wasi_ext_lib_generated::Redirect {
+            type_: wasi_ext_lib_generated::RedirectType_READ,
+            path: CString::new(&path[..]).unwrap().as_c_str().as_ptr(),
+            fd: *fd as i32
+        }},
+        Redirect::Write((fd, path)) => { wasi_ext_lib_generated::Redirect {
+            type_: wasi_ext_lib_generated::RedirectType_WRITE,
+            path: CString::new(&path[..]).unwrap().as_c_str().as_ptr(),
+            fd: *fd as i32
+        }},
+        Redirect::Append((fd, path)) => { wasi_ext_lib_generated::Redirect {
+            type_: wasi_ext_lib_generated::RedirectType_APPEND,
+            path: CString::new(&path[..]).unwrap().as_c_str().as_ptr(),
+            fd: *fd as i32
+        }},
+    }
+}
+
 pub struct SyscallResult {
     pub exit_status: i32,
     pub output: String,
@@ -124,19 +144,31 @@ pub fn spawn(
     env: &HashMap<String, String>,
     background: bool,
     redirects: &[Redirect]
-) -> SyscallResult {
-    match syscall("spawn", &json!({
-        "path": path,
-        "args": args,
-        "env": env,
-        "redirects": redirects,
-        "background": background,
-        "working_dir": env::current_dir().unwrap_or(PathBuf::from("/")),
-    })) {
-        Ok(result) => result,
-        Err(e) => SyscallResult {
-            exit_status: e.raw().into(),
-            output: String::from("Could not invoke syscall")
-        }
+) -> Result<ExitCode, ExitCode> {
+    let syscall_result = unsafe {
+        wasi_ext_lib_generated::wasi_ext_spawn(
+            CString::new(path).unwrap().as_c_str().as_ptr(),
+            args.iter().map(|arg| {
+                CString::new(*arg).unwrap().as_c_str().as_ptr()
+            }).collect::<Vec<*const i8>>().as_ptr(),
+            args.len(),
+            env.iter().map(|(key, val)| {
+                wasi_ext_lib_generated::Env {
+                    attrib: CString::new(&key[..]).unwrap().as_c_str().as_ptr(),
+                    val: CString::new(&val[..]).unwrap().as_c_str().as_ptr()
+                }
+            }).collect::<Vec<wasi_ext_lib_generated::Env>>().as_ptr(),
+            env.len(),
+            background as i32,
+            redirects.iter().map(|red| {
+                get_c_redirect(red)
+            }).collect::<Vec<wasi_ext_lib_generated::Redirect>>().as_ptr(),
+            redirects.len()
+        )
+    };
+    if syscall_result < 0 {
+        Err(-syscall_result)
+    } else {
+        Ok(syscall_result)
     }
 }
