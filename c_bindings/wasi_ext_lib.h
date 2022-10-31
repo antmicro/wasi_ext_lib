@@ -3,6 +3,11 @@
 
 #include <stdlib.h>
 
+enum RedirectType {READ, WRITE, APPEND};
+
+struct Redirect {int fd; const char *path; enum RedirectType type;};
+struct Env{const char *attrib; const char *val;};
+
 int wasi_ext_chdir(const char*);
 int wasi_ext_getcwd(char*, size_t);
 int wasi_ext_isatty(int);
@@ -13,6 +18,8 @@ int wasi_ext_set_echo(int);
 int wasi_ext_hterm_get(const char*, char*, size_t);
 int wasi_ext_hterm_set(const char*, const char*);
 #endif
+int wasi_ext_spawn( const char*, const char* const*, size_t, const struct Env*,
+    size_t, int, const struct Redirect*, size_t n_redirects);
 
 #endif 
 

@@ -8,6 +8,7 @@ fn main() {
     cc::Build::new()
         .archiver(format!("{}/bin/ar", env!("WASI_SDK_PATH")))
         .file("c_bindings/wasi_ext_lib.c")
+        .file("c_bindings/json/json.c")
         .flag("-DHTERM")
         .flag("-Wall")
         .flag("-Wextra")
