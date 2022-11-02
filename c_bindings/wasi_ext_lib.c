@@ -131,7 +131,7 @@ int wasi_ext_spawn(
     for (size_t i = 0; i < n_env; i++) {
         json_append_member(_env, env[i].attrib, json_mkstring(env[i].val));
     }
-    json_append_member(root, "env", _env);
+    json_append_member(root, "extended_env", _env);
 
     json_append_member(root, "background", json_mkbool((bool)background));
 
@@ -141,13 +141,13 @@ int wasi_ext_spawn(
     }
     json_append_member(root, "redirects", _redirects);
 
-    char call_args[SYSCALL_ARGS_LENGTH];
-    json_stringify(root, call_args);
+    char *call_args = json_stringify(root, " ");
     json_delete(root);
 
     const size_t output_len = 4;
     char buf[output_len];
     int result = __syscall("spawn", call_args, buf, output_len);
+    free(call_args);
     int status = atoi(buf);
     if (status != 0) return -status;
     else return result;
