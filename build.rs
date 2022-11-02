@@ -22,6 +22,7 @@ fn main() {
     bindgen::Builder::default()
         .header("c_bindings/wasi_ext_lib.h")
         .clang_arg(format!("--sysroot={}/share/wasi-sysroot", env!("WASI_SDK_PATH")))
+        .clang_arg("-DHTERM")
         .clang_arg("-fvisibility=default")
         .allowlist_file("c_bindings/wasi_ext_lib.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
