@@ -113,8 +113,8 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
         Some(value) => {
             match unsafe {
                 wasi_ext_lib_generated::wasi_ext_hterm_set(
-                    attrib.as_ptr() as *const i8,
-                    value.as_ptr() as *const i8
+                    CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
+                    CString::new(&value[..]).unwrap().as_c_str().as_ptr() as *const i8
                 )
             } {
                 0 => Ok(None),
@@ -126,7 +126,7 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
             let mut buf = [0u8; output_len];
             match unsafe {
                 wasi_ext_lib_generated::wasi_ext_hterm_get(
-                    attrib.as_ptr() as *const i8,
+                    CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
                     buf.as_mut_ptr() as *mut i8,
                     output_len
                 )
