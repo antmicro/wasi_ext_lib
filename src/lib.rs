@@ -127,7 +127,7 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
             match unsafe {
                 wasi_ext_lib_generated::wasi_ext_hterm_get(
                     attrib.as_ptr() as *const i8,
-                    buf.as_mut_ptr() as *const i8,
+                    buf.as_mut_ptr() as *mut i8,
                     output_len
                 )
             } {
