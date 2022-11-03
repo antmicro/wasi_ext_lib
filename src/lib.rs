@@ -82,10 +82,17 @@ pub fn isatty(fd: i32) -> Result<bool, ExitCode> {
 }
 
 pub fn set_env(key: &str, val: Option<&str>) -> Result<(), ExitCode> {
-    match unsafe { wasi_ext_lib_generated::wasi_ext_set_env(key.as_ptr() as *const i8, match val {
-        Some(v) => v.as_ptr() as *mut i8,
-        None => ptr::null::<i8>()
-    })} {
+    match if let Some(v) = val {
+        unsafe { wasi_ext_lib_generated::wasi_ext_set_env(
+            CString::new(key).unwrap().as_ptr() as *const i8,
+            CString::new(v).unwrap().as_ptr() as *const i8
+        )}
+    } else {
+        unsafe { wasi_ext_lib_generated::wasi_ext_set_env(
+            CString::new(key).unwrap().as_ptr() as *const i8,
+            ptr::null::<i8>()
+        )}
+    } {
         0 => Ok(()),
         e => Err(e)
     }

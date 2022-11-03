@@ -69,9 +69,9 @@ int wasi_ext_set_env(const char *attrib, const char *val) {
     sprintf(env, "%s=%s", attrib, val);
     free(env);
     if (val != NULL) {
-        sprintf(args, "{ \"attrib\": %s, \"val\": %s }", attrib, val);
+        sprintf(args, "{ \"key\": \"%s\", \"value\": \"%s\" }", attrib, val);
     } else {
-        sprintf(args, "{ \"attrib\": %s }", attrib);
+        sprintf(args, "{ \"key\": \"%s\" }", attrib);
     }
     return __syscall("set_env", args, NULL, 0);
 }
