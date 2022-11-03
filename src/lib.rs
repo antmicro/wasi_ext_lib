@@ -5,7 +5,7 @@ use std::fs;
 use std::ptr;
 use std::path::Path;
 use std::convert::AsRef;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::os::wasi::ffi::OsStrExt;
 
 mod wasi_ext_lib_generated;
@@ -46,8 +46,8 @@ pub struct SyscallResult {
 
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
-    if let Ok(canon) = fs::canonicalize(&path) {
-        if let Err(_) = env::set_current_dir(&canon) {
+    if let Ok(canon) = fs::canonicalize(path.as_ref()) {
+        if let Err(e) = env::set_current_dir(&canon.as_path()) {
             return Err(wasi::ERRNO_NOENT.raw().into())
         };
         let pth = match CString::new(path.as_ref().as_os_str().as_bytes()) {
@@ -67,7 +67,14 @@ pub fn getcwd() -> Result<String, ExitCode> {
     const BUF_LEN: usize = 256;
     let mut buf = [0u8; BUF_LEN];
     match unsafe { wasi_ext_lib_generated::wasi_ext_getcwd(buf.as_mut_ptr() as *mut i8, BUF_LEN) } {
-        0 => Ok(std::str::from_utf8(&buf).expect("Could not read syscall output").to_string()),
+        0 => {
+            Ok(
+                String::from(
+                    str::from_utf8(
+                        &buf[..buf.iter().position(|&i| i == 0).unwrap()]
+                    ).unwrap())
+            )
+        }
         e => Err(e)
     }
 }
