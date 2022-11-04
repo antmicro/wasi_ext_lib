@@ -5,8 +5,9 @@ use std::fs;
 use std::ptr;
 use std::path::Path;
 use std::convert::AsRef;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::wasi::ffi::OsStrExt;
+use std::convert::From;
 
 mod wasi_ext_lib_generated;
 
@@ -19,35 +20,54 @@ pub enum Redirect {
     Append((wasi::Fd, String)),
 }
 
-unsafe fn get_c_redirect(r: &Redirect) -> wasi_ext_lib_generated::Redirect{
+enum CStringRedirect {
+    Read((wasi::Fd, CString)),
+    Write((wasi::Fd, CString)),
+    Append((wasi::Fd, CString)),
+}
+
+impl From<&Redirect> for CStringRedirect {
+    fn from(redirect: &Redirect) -> Self {
+        match redirect {
+            Redirect::Read((fd, path)) => CStringRedirect::Read((
+                *fd,
+                CString::new(&path[..]).unwrap()
+            )),
+            Redirect::Write((fd, path)) => CStringRedirect::Write((
+                *fd,
+                CString::new(&path[..]).unwrap()
+            )),
+            Redirect::Append((fd, path)) => CStringRedirect::Append((
+                *fd,
+                CString::new(&path[..]).unwrap()
+            )),
+        }
+    }
+}
+
+unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirect {
     match r {
-        Redirect::Read((fd, path)) => { wasi_ext_lib_generated::Redirect {
+        CStringRedirect::Read((fd, path)) => { wasi_ext_lib_generated::Redirect {
             type_: wasi_ext_lib_generated::RedirectType_READ,
-            path: CString::new(&path[..]).unwrap().as_c_str().as_ptr(),
+            path: path.as_c_str().as_ptr(),
             fd: *fd as i32
         }},
-        Redirect::Write((fd, path)) => { wasi_ext_lib_generated::Redirect {
+        CStringRedirect::Write((fd, path)) => { wasi_ext_lib_generated::Redirect {
             type_: wasi_ext_lib_generated::RedirectType_WRITE,
-            path: CString::new(&path[..]).unwrap().as_c_str().as_ptr(),
+            path: path.as_c_str().as_ptr(),
             fd: *fd as i32
         }},
-        Redirect::Append((fd, path)) => { wasi_ext_lib_generated::Redirect {
+        CStringRedirect::Append((fd, path)) => { wasi_ext_lib_generated::Redirect {
             type_: wasi_ext_lib_generated::RedirectType_APPEND,
-            path: CString::new(&path[..]).unwrap().as_c_str().as_ptr(),
+            path: path.as_c_str().as_ptr(),
             fd: *fd as i32
         }},
     }
 }
 
-pub struct SyscallResult {
-    pub exit_status: i32,
-    pub output: String,
-}
-
-
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
     if let Ok(canon) = fs::canonicalize(path.as_ref()) {
-        if let Err(e) = env::set_current_dir(&canon.as_path()) {
+        if let Err(_) = env::set_current_dir(&canon.as_path()) {
             return Err(wasi::ERRNO_NOENT.raw().into())
         };
         let pth = match CString::new(path.as_ref().as_os_str().as_bytes()) {
@@ -160,24 +180,37 @@ pub fn spawn(
     redirects: &[Redirect]
 ) -> Result<ExitCode, ExitCode> {
     let syscall_result = unsafe {
+        let cstring_args = args.iter().map(|arg| {
+            CString::new(*arg).unwrap()
+        }).collect::<Vec<CString>>();
+
+        let cstring_env = env.iter().map(|(key, val)| {
+            (
+                CString::new(&key[..]).unwrap(),
+                CString::new(&val[..]).unwrap()
+            )
+        }).collect::<Vec<(CString, CString)>>();
+
+        let cstring_redirects = redirects.into_iter().map(|redirect| {
+            CStringRedirect::from(redirect)
+        }).collect::<Vec<CStringRedirect>>();
+
         wasi_ext_lib_generated::wasi_ext_spawn(
             CString::new(path).unwrap().as_c_str().as_ptr(),
-            args.iter().map(|arg| {
-                CString::new(*arg).unwrap().as_c_str().as_ptr()
-            }).collect::<Vec<*const i8>>().as_ptr(),
+            cstring_args.iter().map(|arg| arg.as_c_str().as_ptr()).collect::<Vec<*const i8>>().as_ptr(),
             args.len(),
-            env.iter().map(|(key, val)| {
+            cstring_env.iter().map(|(key, val)| {
                 wasi_ext_lib_generated::Env {
-                    attrib: CString::new(&key[..]).unwrap().as_c_str().as_ptr(),
-                    val: CString::new(&val[..]).unwrap().as_c_str().as_ptr()
+                    attrib: key.as_c_str().as_ptr(),
+                    val: val.as_c_str().as_ptr()
                 }
             }).collect::<Vec<wasi_ext_lib_generated::Env>>().as_ptr(),
             env.len(),
             background as i32,
-            redirects.iter().map(|red| {
+            cstring_redirects.iter().map(|red| {
                 get_c_redirect(red)
             }).collect::<Vec<wasi_ext_lib_generated::Redirect>>().as_ptr(),
-            redirects.len()
+            cstring_redirects.len()
         )
     };
     if syscall_result < 0 {
