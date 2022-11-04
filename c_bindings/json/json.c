@@ -61,6 +61,16 @@ static void sb_init(SB *sb)
 	sb->end = sb->start + 16;
 }
 
+static void __sb_init(SB *sb)
+{
+	sb->start = (char*) malloc(18);
+	sb->start[0] = '!';
+	if (sb->start == NULL)
+		out_of_memory();
+	sb->cur = sb->start+1;
+	sb->end = sb->start + 17;
+}
+
 /* sb and need may be evaluated multiple times. */
 #define sb_need(sb, need) do {                  \
 		if ((sb)->end - (sb)->cur < (need))     \
@@ -377,7 +387,7 @@ JsonNode *json_decode(const char *json)
 
 char *json_encode(const JsonNode *node)
 {
-	return json_stringify(node, NULL);
+	return json_stringify(0, node, NULL);
 }
 
 char *json_encode_string(const char *str)
@@ -390,10 +400,11 @@ char *json_encode_string(const char *str)
 	return sb_finish(&sb);
 }
 
-char *json_stringify(const JsonNode *node, const char *space)
+char *json_stringify(bool prefix, const JsonNode *node, const char *space)
 {
 	SB sb;
-	sb_init(&sb);
+	if (prefix) __sb_init(&sb);
+	else sb_init(&sb);
 	
 	if (space != NULL)
 		emit_value_indented(&sb, node, space, 0);

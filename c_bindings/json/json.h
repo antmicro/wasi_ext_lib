@@ -71,7 +71,7 @@ struct JsonNode
 JsonNode   *json_decode         (const char *json);
 char       *json_encode         (const JsonNode *node);
 char       *json_encode_string  (const char *str);
-char       *json_stringify      (const JsonNode *node, const char *space);
+char       *json_stringify      (bool prefix, const JsonNode *node, const char *space);
 void        json_delete         (JsonNode *node);
 
 bool        json_validate       (const char *json);

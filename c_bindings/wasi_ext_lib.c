@@ -32,48 +32,76 @@ JsonNode *json_mkredirect(struct Redirect redir) {
 }
 
 int __syscall(const char *command, char *args, uint8_t *output_buf, size_t output_buf_len) {
-    char c[SYSCALL_LENGTH];
-    sprintf(c, "!{\"command\": \"%s\", \"buf_len\": %ld, \"buf_ptr\": \"%p\"}", command, strlen(args), args);
+    char ptr[32];
+    sprintf(ptr, "%p", args);
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "command", json_mkstring(command));
+    json_append_member(root, "buf_len", json_mknumber((double) strlen(args)));
+    json_append_member(root, "buf_ptr", json_mkstring(ptr));
+
+    char *serialized = json_stringify(1, root, " ");
+    json_delete(root);
 
     size_t written;
-    int err = __wasi_path_readlink(3, c, output_buf, output_buf_len, &written);
+    int err = __wasi_path_readlink(3, serialized, output_buf, output_buf_len, &written);
+    free(serialized);
     return err;
 }
 
 int wasi_ext_chdir(const char *path) {
-    // wasilib doesn't support realpath, so the given path must be canonicalized
-    char args[SYSCALL_ARGS_LENGTH];
-    sprintf(args, "{\"dir\": \"%s\"}", path);
-    return __syscall("chdir", args, NULL, 0);
+    // wasi lib doesn't support realpath, so the given path must be canonicalized
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "dir", json_mkstring(path));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("chdir", serialized, NULL, 0);
+    free(serialized);
+    return err;
 }
 
 int wasi_ext_getcwd(char *path, size_t buf_len) {
-    char c[SYSCALL_ARGS_LENGTH];
-    sprintf(c, "{\"buf_len\": %zu}", buf_len);
-    return __syscall("getcwd", c, (uint8_t*)path, buf_len);
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "buf_len", json_mknumber((double)buf_len));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("getcwd", serialized, (uint8_t*)path, buf_len);
+    free(serialized);
+    return err;
 }
 
 int wasi_ext_isatty(int fd) {
-    char args[SYSCALL_ARGS_LENGTH];
     const size_t output_len = 64;
     char output[output_len];
-    sprintf(args, "{ \"fd\": %d }", fd);
-    int err = __syscall("isatty", args, (uint8_t*)output, output_len);
+
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "fd", json_mknumber((double)fd));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("isatty", serialized, (uint8_t*)output, output_len);
+    free(serialized);
     if (err != 0) { return -err; }
     return atoi(output);
 }
 
 int wasi_ext_set_env(const char *attrib, const char *val) {
-    char args[SYSCALL_ARGS_LENGTH];
-    char *env = malloc(strlen(attrib) + strlen(val) + 2);
-    sprintf(env, "%s=%s", attrib, val);
-    free(env);
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "key", json_mkstring(attrib));
     if (val != NULL) {
-        sprintf(args, "{ \"key\": \"%s\", \"value\": \"%s\" }", attrib, val);
-    } else {
-        sprintf(args, "{ \"key\": \"%s\" }", attrib);
+        json_append_member(root, "value", json_mkstring(val));
     }
-    return __syscall("set_env", args, NULL, 0);
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("set_env", serialized, NULL, 0);
+    free(serialized);
+    return err;
 }
 
 int wasi_ext_getpid() {
@@ -89,22 +117,43 @@ int wasi_ext_getpid() {
 }
 
 int wasi_ext_set_echo(int should_echo) {
-    char args[SYSCALL_ARGS_LENGTH];
-    sprintf(args, "{ \"echo\": %d }", should_echo);
-    return __syscall("set_echo", args, NULL, 0);
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "echo", json_mkbool(should_echo == 1));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("set_echo", serialized, NULL, 0);
+    free(serialized);
+    return err;
 }
 
 #ifdef HTERM
 int wasi_ext_hterm_set(const char* attrib, const char *val) {
-    char args[SYSCALL_ARGS_LENGTH];
-    sprintf(args, "{ \"method\": \"set\", \"attrib\": %s, \"val\": %s }", attrib, val);
-    return __syscall("hterm", args, NULL, 0);
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "method", json_mkstring("set"));
+    json_append_member(root, "attrib", json_mkstring(attrib));
+    json_append_member(root, "val", json_mkstring(val));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("hterm", serialized, NULL, 0);
+    free(serialized);
+    return err;
 }
 
 int wasi_ext_hterm_get(const char* attrib, char *val, size_t val_len) {
-    char args[SYSCALL_ARGS_LENGTH];
-    sprintf(args, "{ \"method\": \"get\", \"attrib\": %s }", attrib);
-    return __syscall("hterm", args, (uint8_t*)val, val_len);
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "method", json_mkstring("get"));
+    json_append_member(root, "attrib", json_mkstring(attrib));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("hterm", serialized, (uint8_t*)val, val_len);
+    free(serialized);
+    return err;
 }
 #endif
 
@@ -141,7 +190,7 @@ int wasi_ext_spawn(
     }
     json_append_member(root, "redirects", _redirects);
 
-    char *call_args = json_stringify(root, " ");
+    char *call_args = json_stringify(0, root, " ");
     json_delete(root);
 
     const size_t output_len = 4;
