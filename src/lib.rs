@@ -84,19 +84,25 @@ pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
 }
 
 pub fn getcwd() -> Result<String, ExitCode> {
-    const BUF_LEN: usize = 256;
-    let mut buf = [0u8; BUF_LEN];
-    match unsafe { wasi_ext_lib_generated::wasi_ext_getcwd(buf.as_mut_ptr() as *mut i8, BUF_LEN) } {
-        0 => {
-            Ok(
-                String::from(
-                    str::from_utf8(
-                        &buf[..buf.iter().position(|&i| i == 0).unwrap()]
-                    ).unwrap())
-            )
-        }
-        e => Err(e)
+    const MAX_BUF_SIZE: usize = 65536;
+    let mut buf_size: usize = 256;
+    let mut buf = vec![0u8; buf_size];
+    while buf_size < MAX_BUF_SIZE {
+        match unsafe { wasi_ext_lib_generated::wasi_ext_getcwd(buf.as_mut_ptr() as *mut i8, buf_size) } {
+            0 => {
+                return Ok(
+                    String::from(
+                        str::from_utf8(
+                            &buf[..buf.iter().position(|&i| i == 0).unwrap()]
+                        ).unwrap())
+                )
+            }
+            e => { if e != wasi::ERRNO_NOBUFS.raw().into() { return Err(e) }; }
+        };
+        buf_size *= 2;
+        buf.resize(buf_size, 0u8);
     }
+    return Err(wasi::ERRNO_NAMETOOLONG.raw().into())
 }
 
 pub fn isatty(fd: i32) -> Result<bool, ExitCode> {
