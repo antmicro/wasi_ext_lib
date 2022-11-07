@@ -1,14 +1,18 @@
 use std::collections::HashMap;
 use std::str;
 use std::env;
-use std::path::PathBuf;
+use std::fs;
+use std::ptr;
+use std::path::Path;
+use std::convert::AsRef;
+use std::ffi::CString;
+use std::os::wasi::ffi::OsStrExt;
+use std::convert::From;
 
-use serde_json::json;
-use serde::{Serialize, Serializer};
-use serde::ser::SerializeStruct;
+mod wasi_ext_lib_generated;
 
 type ExitCode = i32;
-type Pid = u32;
+type Pid = i32;
 
 pub enum Redirect {
     Read((wasi::Fd, String)),
@@ -16,70 +20,156 @@ pub enum Redirect {
     Append((wasi::Fd, String)),
 }
 
-pub struct SyscallResult {
-    pub exit_status: i32,
-    pub output: String,
+enum CStringRedirect {
+    Read((wasi::Fd, CString)),
+    Write((wasi::Fd, CString)),
+    Append((wasi::Fd, CString)),
 }
 
-impl Serialize for Redirect {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        let mut state = serializer.serialize_struct("Redirect", 3)?;
-        match self {
-            Redirect::Read((fd, path)) => {
-                state.serialize_field("mode", "read")?;
-                state.serialize_field("fd", fd)?;
-                state.serialize_field("path", path)?;
-            }
-            Redirect::Write((fd, path)) => {
-                state.serialize_field("mode", "write")?;
-                state.serialize_field("fd", fd)?;
-                state.serialize_field("path", path)?;
-            }
-            Redirect::Append((fd, path)) => {
-                state.serialize_field("mode", "append")?;
-                state.serialize_field("fd", fd)?;
-                state.serialize_field("path", path)?;
-            }
+impl From<&Redirect> for CStringRedirect {
+    fn from(redirect: &Redirect) -> Self {
+        match redirect {
+            Redirect::Read((fd, path)) => CStringRedirect::Read((
+                *fd,
+                CString::new(&path[..]).unwrap()
+            )),
+            Redirect::Write((fd, path)) => CStringRedirect::Write((
+                *fd,
+                CString::new(&path[..]).unwrap()
+            )),
+            Redirect::Append((fd, path)) => CStringRedirect::Append((
+                *fd,
+                CString::new(&path[..]).unwrap()
+            )),
         }
-        state.end()
     }
 }
 
-fn syscall(
-    command: &str,
-    data: &serde_json::Value
-) -> Result<SyscallResult, wasi::Errno> {
-    Ok({
-        let j = data.to_string();
-        let c = json!({
-            "command": command,
-            "buf_len": j.len(),
-            "buf_ptr": format!("{:?}", j.as_ptr()),
-        }).to_string();
+unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirect {
+    match r {
+        CStringRedirect::Read((fd, path)) => { wasi_ext_lib_generated::Redirect {
+            type_: wasi_ext_lib_generated::RedirectType_READ,
+            path: path.as_c_str().as_ptr(),
+            fd: *fd as i32
+        }},
+        CStringRedirect::Write((fd, path)) => { wasi_ext_lib_generated::Redirect {
+            type_: wasi_ext_lib_generated::RedirectType_WRITE,
+            path: path.as_c_str().as_ptr(),
+            fd: *fd as i32
+        }},
+        CStringRedirect::Append((fd, path)) => { wasi_ext_lib_generated::Redirect {
+            type_: wasi_ext_lib_generated::RedirectType_APPEND,
+            path: path.as_c_str().as_ptr(),
+            fd: *fd as i32
+        }},
+    }
+}
 
-        const BUF_LEN: usize = 1024;
-        let mut buf = vec![0u8; BUF_LEN];
-        unsafe {
-            let result_len = wasi::path_readlink(4, &format!("/!{}", c), buf.as_mut_ptr(), BUF_LEN)?;
-            match str::from_utf8(&buf[0..result_len]) {
-                Ok(result) => {
-                    if let Some((exit_status, output)) = result.split_once("\x1b") {
-                        SyscallResult{
-                            exit_status: if let Ok(n) = exit_status.parse::<i32>() {
-                                n
-                            } else {
-                                return Err(wasi::ERRNO_BADMSG)
-                            },
-                            output: output.to_string()
-                        }
-                    } else {
-                        return Err(wasi::ERRNO_BADMSG)
-                    }
-                }
-                Err(_) => return Err(wasi::ERRNO_BADMSG)
+pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
+    if let Ok(canon) = fs::canonicalize(path.as_ref()) {
+        if let Err(_) = env::set_current_dir(&canon.as_path()) {
+            return Err(wasi::ERRNO_NOENT.raw().into())
+        };
+        let pth = match CString::new(path.as_ref().as_os_str().as_bytes()) {
+            Ok(p) => p,
+            Err(_) => { return Err(wasi::ERRNO_INVAL.raw().into()) }
+        };
+        match unsafe { wasi_ext_lib_generated::wasi_ext_chdir(pth.as_ptr()) } {
+            0 => Ok(()),
+            e => Err(e)
+        }
+    } else {
+        Err(wasi::ERRNO_INVAL.raw().into())
+    }
+}
+
+pub fn getcwd() -> Result<String, ExitCode> {
+    const BUF_LEN: usize = 256;
+    let mut buf = [0u8; BUF_LEN];
+    match unsafe { wasi_ext_lib_generated::wasi_ext_getcwd(buf.as_mut_ptr() as *mut i8, BUF_LEN) } {
+        0 => {
+            Ok(
+                String::from(
+                    str::from_utf8(
+                        &buf[..buf.iter().position(|&i| i == 0).unwrap()]
+                    ).unwrap())
+            )
+        }
+        e => Err(e)
+    }
+}
+
+pub fn isatty(fd: i32) -> Result<bool, ExitCode> {
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_isatty(fd) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(result == 1)
+    }
+}
+
+pub fn set_env(key: &str, val: Option<&str>) -> Result<(), ExitCode> {
+    match if let Some(v) = val {
+        unsafe { wasi_ext_lib_generated::wasi_ext_set_env(
+            CString::new(key).unwrap().as_ptr() as *const i8,
+            CString::new(v).unwrap().as_ptr() as *const i8
+        )}
+    } else {
+        unsafe { wasi_ext_lib_generated::wasi_ext_set_env(
+            CString::new(key).unwrap().as_ptr() as *const i8,
+            ptr::null::<i8>()
+        )}
+    } {
+        0 => Ok(()),
+        e => Err(e)
+    }
+}
+
+pub fn getpid() -> Result<Pid, ExitCode> {
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_getpid() };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(result)
+    }
+}
+
+pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
+    match unsafe { wasi_ext_lib_generated::wasi_ext_set_echo(should_echo as i32) } {
+        0 => Ok(()),
+        e => Err(e)
+    }
+}
+
+#[cfg(feature = "hterm")]
+pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode> {
+    match val {
+        Some(value) => {
+            match unsafe {
+                wasi_ext_lib_generated::wasi_ext_hterm_set(
+                    CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
+                    CString::new(&value[..]).unwrap().as_c_str().as_ptr() as *const i8
+                )
+            } {
+                0 => Ok(None),
+                e => Err(e)
+            }
+        },
+        None => {
+            const output_len: usize = 256;
+            let mut buf = [0u8; output_len];
+            match unsafe {
+                wasi_ext_lib_generated::wasi_ext_hterm_get(
+                    CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
+                    buf.as_mut_ptr() as *mut i8,
+                    output_len
+                )
+            } {
+                0 => Ok(Some(str::from_utf8(&buf).expect("Could not read syscall output").to_string())),
+                e => Err(e)
             }
         }
-    })
+    }
 }
 
 pub fn spawn(
@@ -89,144 +179,43 @@ pub fn spawn(
     background: bool,
     redirects: &[Redirect]
 ) -> Result<ExitCode, ExitCode> {
-    match syscall("spawn", &json!({
-        "path": path,
-        "args": args,
-        "env": env,
-        "redirects": redirects,
-        "background": background,
-        "working_dir": env::current_dir().unwrap_or(PathBuf::from("/")),
-    })) {
-        Ok(result) => Ok(result.exit_status),
-        Err(e) => Err(e.raw().into())
-    }
-}
+    let syscall_result = unsafe {
+        let cstring_args = args.iter().map(|arg| {
+            CString::new(*arg).unwrap()
+        }).collect::<Vec<CString>>();
 
-pub fn chdir(path: &str) -> Result<(), ExitCode> {
-    match std::env::set_current_dir(path) {
-        Ok(()) => (),
-        Err(_) => return Err(wasi::ERRNO_NOENT.raw().into())
+        let cstring_env = env.iter().map(|(key, val)| {
+            (
+                CString::new(&key[..]).unwrap(),
+                CString::new(&val[..]).unwrap()
+            )
+        }).collect::<Vec<(CString, CString)>>();
+
+        let cstring_redirects = redirects.into_iter().map(|redirect| {
+            CStringRedirect::from(redirect)
+        }).collect::<Vec<CStringRedirect>>();
+
+        wasi_ext_lib_generated::wasi_ext_spawn(
+            CString::new(path).unwrap().as_c_str().as_ptr(),
+            cstring_args.iter().map(|arg| arg.as_c_str().as_ptr()).collect::<Vec<*const i8>>().as_ptr(),
+            args.len(),
+            cstring_env.iter().map(|(key, val)| {
+                wasi_ext_lib_generated::Env {
+                    attrib: key.as_c_str().as_ptr(),
+                    val: val.as_c_str().as_ptr()
+                }
+            }).collect::<Vec<wasi_ext_lib_generated::Env>>().as_ptr(),
+            env.len(),
+            background as i32,
+            cstring_redirects.iter().map(|red| {
+                get_c_redirect(red)
+            }).collect::<Vec<wasi_ext_lib_generated::Redirect>>().as_ptr(),
+            cstring_redirects.len()
+        )
     };
-    match syscall("chdir", &json!({ "dir": path })) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(())
-            } else {
-                Err(result.exit_status)
-            }
-        }
-        Err(e) => Err(e.raw().into())
-    }
-}
-
-pub fn getcwd() -> Result<String, ExitCode> {
-    match syscall("getcwd", &json!({})) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(result.output)
-            } else {
-                Err(result.exit_status)
-            }
-        }
-        Err(e) => Err(e.raw().into()),
-    }
-}
-
-pub fn isatty(fd: wasi::Fd) -> Result<bool, ExitCode> {
-    match syscall("isatty", &json!({ "fd": fd })) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(match result.output.as_str() {
-                    "0" => false,
-                    "1" => true,
-                    _ => return Err(wasi::ERRNO_BADMSG.raw().into())
-                })
-            } else {
-                Err(result.exit_status)
-            }
-        },
-        Err(e) => return Err(e.raw().into())
-    }
-}
-
-pub fn getpid() -> Result<Pid, ExitCode> {
-    match syscall("getpid", &json!({})) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                if let Ok(a) = result.output.parse::<u32>() {
-                    Ok(a)
-                } else {
-                    Err(wasi::ERRNO_BADMSG.raw().into())
-                }
-            } else {
-                Err(result.exit_status)
-            }
-        },
-        Err(e) => Err(e.raw().into())
-    }
-}
-
-pub fn set_env(key: &str, val: Option<&str>) -> Result<(), ExitCode> {
-    match syscall("set_env", &if let Some(value) = val {
-        json!({
-            "key": key,
-            "value": value
-        })
+    if syscall_result < 0 {
+        Err(-syscall_result)
     } else {
-        json!({
-            "key": key,
-        })
-    }) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(())
-            } else {
-                Err(result.exit_status)
-            }
-        }
-        Err(e) => Err(e.raw().into())
-    }
-}
-
-pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
-    match syscall("set_echo", &json!({"echo": should_echo})) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(())
-            } else {
-                Err(result.exit_status)
-            }
-        }
-        Err(e) => Err(e.raw().into())
-    }
-}
-
-#[cfg(feature = "hterm")]
-pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode> {
-    match val {
-        Some(value) => {
-            match syscall("hterm", &json!({ "method": "set", "attrib": attrib, "val": value })) {
-                Ok(result) => {
-                    if let 0 = result.exit_status {
-                        Ok(None)
-                    } else {
-                        Err(result.exit_status)
-                    }
-                }
-                Err(e) => Err(e.raw().into())
-            }
-        },
-        None => {
-            match syscall("hterm", &json!({ "method": "get", "attrib": attrib })) {
-                Ok(result) => {
-                    if let 0 = result.exit_status {
-                        Ok(Some(result.output))
-                    } else {
-                        Err(result.exit_status)
-                    }
-                }
-                Err(e) => Err(e.raw().into())
-            }
-        }
+        Ok(syscall_result)
     }
 }
