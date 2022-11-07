@@ -9,11 +9,14 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}/wasi_ext_lib.c", CLIB_DIR);
     println!("cargo:rerun-if-changed={}/wasi_ext_lib.h", CLIB_DIR);
-    Command::new("make")
+    println!("cargo:rerun-if-changed={}/Makefile", CLIB_DIR);
+    let mut make = Command::new("make");
+    #[cfg(feature = "hterm")]
+    make.arg("CFLAGS=-DHTERM");
+    make
         .arg("-C")
         .arg(CLIB_DIR)
-        .spawn()
-        .expect("Could not build C library");
+        .spawn().expect("Could not build C library");
     println!("cargo:rustc-link-search={}/bin/", CLIB_DIR);
 
     println!("cargo:rustc-link-lib=static=wasi_ext_lib");
