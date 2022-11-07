@@ -171,7 +171,13 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
                     output_len
                 )
             } {
-                0 => Ok(Some(str::from_utf8(&buf).expect("Could not read syscall output").to_string())),
+                0 => Ok(
+                    Some(
+                        str::from_utf8(
+                            &buf[..match buf.iter().position(|&i| i == 0) {
+                                Some(x) => x,
+                                None => { return Err(wasi::ERRNO_ILSEQ.raw().into()); }
+                            }]).expect("Could not read syscall output").to_string())),
                 e => Err(e)
             }
         }
