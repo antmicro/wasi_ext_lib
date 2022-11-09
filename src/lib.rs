@@ -67,10 +67,10 @@ unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirec
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
     if let Ok(canon) = fs::canonicalize(path.as_ref()) {
-        if let Err(_) = env::set_current_dir(&canon.as_path()) {
-            return Err(wasi::ERRNO_NOENT.raw().into())
+        if let Err(e) = env::set_current_dir(&canon.as_path()) {
+            return Err(e.raw_os_error().unwrap_or(wasi::ERRNO_INVAL.raw().into()))
         };
-        let pth = match CString::new(path.as_ref().as_os_str().as_bytes()) {
+        let pth = match CString::new(canon.as_os_str().as_bytes()) {
             Ok(p) => p,
             Err(_) => { return Err(wasi::ERRNO_INVAL.raw().into()) }
         };
