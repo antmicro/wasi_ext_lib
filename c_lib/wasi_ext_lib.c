@@ -195,7 +195,7 @@ int wasi_ext_spawn(
 
     const size_t output_len = 4;
     char buf[output_len];
-    int result = __syscall("spawn", call_args, buf, output_len);
+    int result = __syscall("spawn", call_args, (uint8_t*)buf, output_len);
     free(call_args);
     int status = atoi(buf);
     if (status != 0) return -status;
