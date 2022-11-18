@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include "wasi_ext_lib.h"
 #include "json/json.h"
@@ -90,6 +91,11 @@ int wasi_ext_isatty(int fd) {
 }
 
 int wasi_ext_set_env(const char *attrib, const char *val) {
+    if (val == NULL) {
+        if (unsetenv(attrib) != 0) { return errno; }
+    } else {
+        if (setenv(attrib, val, 1) != 0) { return errno; }
+    }
     JsonNode *root = json_mkobject();
     json_append_member(root, "key", json_mkstring(attrib));
     if (val != NULL) {
