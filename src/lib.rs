@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::os::wasi::prelude::RawFd;
 use std::str;
 use std::env;
 use std::fs;
@@ -181,6 +182,16 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
                 e => Err(e)
             }
         }
+    }
+}
+
+#[cfg(feature = "hterm")]
+pub fn event_source_fd(event_mask: u32) -> Result<RawFd, ExitCode> {
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_event_source_fd(event_mask) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(result)
     }
 }
 
