@@ -14,10 +14,10 @@ mod wasi_ext_lib_generated;
 type ExitCode = i32;
 type Pid = i32;
 
-pub enum Redirect {
-    Read((wasi::Fd, String)),
-    Write((wasi::Fd, String)),
-    Append((wasi::Fd, String)),
+pub enum Redirect<'a> {
+    Read((wasi::Fd, &'a str)),
+    Write((wasi::Fd, &'a str)),
+    Append((wasi::Fd, &'a str)),
 }
 
 enum CStringRedirect {
@@ -26,19 +26,19 @@ enum CStringRedirect {
     Append((wasi::Fd, CString)),
 }
 
-impl From<&Redirect> for CStringRedirect {
-    fn from(redirect: &Redirect) -> Self {
+impl From<Redirect<'_>> for CStringRedirect {
+    fn from(redirect: Redirect) -> Self {
         match redirect {
             Redirect::Read((fd, path)) => CStringRedirect::Read((
-                *fd,
+                fd,
                 CString::new(&path[..]).unwrap()
             )),
             Redirect::Write((fd, path)) => CStringRedirect::Write((
-                *fd,
+                fd,
                 CString::new(&path[..]).unwrap()
             )),
             Redirect::Append((fd, path)) => CStringRedirect::Append((
-                *fd,
+                fd,
                 CString::new(&path[..]).unwrap()
             )),
         }
@@ -189,7 +189,7 @@ pub fn spawn(
     args: &[&str],
     env: &HashMap<String, String>,
     background: bool,
-    redirects: &[Redirect]
+    redirects: Vec<Redirect>
 ) -> Result<ExitCode, ExitCode> {
     let syscall_result = unsafe {
         let cstring_args = args.iter().map(|arg| {
