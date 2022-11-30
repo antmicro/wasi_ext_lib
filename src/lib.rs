@@ -10,7 +10,12 @@ use std::ffi::CString;
 use std::os::wasi::ffi::OsStrExt;
 use std::convert::From;
 
+#[cfg(feature = "hterm")]
+mod constants;
 mod wasi_ext_lib_generated;
+
+#[cfg(feature = "hterm")]
+pub use constants::*;
 
 type ExitCode = i32;
 type Pid = i32;
@@ -186,7 +191,7 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
 }
 
 #[cfg(feature = "hterm")]
-pub fn event_source_fd(event_mask: u32) -> Result<RawFd, ExitCode> {
+pub fn event_source_fd(event_mask: Wasi_events) -> Result<RawFd, ExitCode> {
     let result = unsafe { wasi_ext_lib_generated::wasi_ext_event_source_fd(event_mask) };
     if result < 0 {
         Err(-result)
