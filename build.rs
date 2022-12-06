@@ -13,10 +13,12 @@ fn main() {
     let mut make = Command::new("make");
     #[cfg(feature = "hterm")]
     make.arg("CFLAGS=-DHTERM");
-    make
-        .arg("-C")
-        .arg(CLIB_DIR)
-        .spawn().expect("Could not build C library");
+    if make.arg("-C").arg(CLIB_DIR)
+        .status()
+        .expect("Could not build C library")
+        .code().unwrap() != 0 {
+        panic!("Unable to compile C library");
+    };
     println!("cargo:rustc-link-search={}/bin/", CLIB_DIR);
 
     println!("cargo:rustc-link-lib=static=wasi_ext_lib");

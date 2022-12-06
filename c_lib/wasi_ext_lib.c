@@ -161,6 +161,24 @@ int wasi_ext_hterm_get(const char* attrib, char *val, size_t val_len) {
     free(serialized);
     return err;
 }
+
+int wasi_ext_event_source_fd(uint32_t event_mask) {
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "event_mask", json_mknumber(event_mask));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    const size_t output_len = 16;
+    char output[output_len];
+
+    int err = __syscall("event_source_fd", serialized, (uint8_t*)output, output_len);
+    free(serialized);
+    if (err != 0) {
+        return -err;
+    }
+    return atoi(output);
+}
 #endif
 
 int wasi_ext_spawn(
