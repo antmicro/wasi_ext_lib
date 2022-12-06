@@ -8,6 +8,14 @@ enum RedirectType {READ, WRITE, APPEND};
 struct Redirect {int fd; const char *path; enum RedirectType type;};
 struct Env{const char *attrib; const char *val;};
 
+#ifdef HTERM
+typedef uint32_t WasiEvents;
+const size_t WASI_EVENTS_NUM = 1;
+const size_t WASI_EVENTS_MASK_SIZE = 4; // number of bytes
+// Hterm events
+const WasiEvents WASI_EVENT_WINCH = 1 << 0;
+#endif
+
 int wasi_ext_chdir(const char*);
 int wasi_ext_getcwd(char*, size_t);
 int wasi_ext_isatty(int);

@@ -11,12 +11,14 @@ use std::ffi::CString;
 use std::os::wasi::ffi::OsStrExt;
 use std::convert::From;
 
-#[cfg(feature = "hterm")]
-mod constants;
 mod wasi_ext_lib_generated;
-
 #[cfg(feature = "hterm")]
-pub use constants::*;
+pub use wasi_ext_lib_generated::{
+    WasiEvents,
+    WASI_EVENTS_NUM,
+    WASI_EVENTS_MASK_SIZE,
+    WASI_EVENT_WINCH,
+};
 
 type ExitCode = i32;
 type Pid = i32;
