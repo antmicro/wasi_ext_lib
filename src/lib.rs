@@ -203,6 +203,13 @@ pub fn event_source_fd(event_mask: WasiEvents) -> Result<RawFd, ExitCode> {
     }
 }
 
+pub fn clean_inodes() -> Result<(), ExitCode> {
+    match unsafe { wasi_ext_lib_generated::wasi_ext_clean_inodes() } {
+        0 => Ok(()),
+        n => Err(n)
+    }
+}
+
 pub fn spawn(
     path: &str,
     args: &[&str],
