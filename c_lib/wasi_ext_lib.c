@@ -181,6 +181,12 @@ int wasi_ext_event_source_fd(uint32_t event_mask) {
 }
 #endif
 
+int wasi_ext_clean_inodes() {
+    const size_t output_len = 4;
+    char output[output_len];
+    return __syscall("clean_inodes", "{}", (uint8_t*)output, output_len);
+}
+
 int wasi_ext_spawn(
     const char *path,
     const char *const *args,
