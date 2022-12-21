@@ -1,3 +1,5 @@
+#![allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+
 use std::collections::HashMap;
 #[cfg(feature = "hterm")]
 use std::os::wasi::prelude::RawFd;
@@ -124,14 +126,16 @@ pub fn isatty(fd: i32) -> Result<bool, ExitCode> {
 }
 
 pub fn set_env(key: &str, val: Option<&str>) -> Result<(), ExitCode> {
+    let c_key = CString::new(key).unwrap();
     match if let Some(v) = val {
+        let c_val = CString::new(v).unwrap();
         unsafe { wasi_ext_lib_generated::wasi_ext_set_env(
-            CString::new(key).unwrap().as_ptr() as *const i8,
-            CString::new(v).unwrap().as_ptr() as *const i8
+            c_key.as_ptr() as *const i8,
+            c_val.as_ptr() as *const i8
         )}
     } else {
         unsafe { wasi_ext_lib_generated::wasi_ext_set_env(
-            CString::new(key).unwrap().as_ptr() as *const i8,
+            c_key.as_ptr() as *const i8,
             ptr::null::<i8>()
         )}
     } {
@@ -171,13 +175,13 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
             }
         },
         None => {
-            const output_len: usize = 256;
-            let mut buf = [0u8; output_len];
+            const OUTPUT_LEN: usize = 256;
+            let mut buf = [0u8; OUTPUT_LEN];
             match unsafe {
                 wasi_ext_lib_generated::wasi_ext_hterm_get(
                     CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
                     buf.as_mut_ptr() as *mut i8,
-                    output_len
+                    OUTPUT_LEN
                 )
             } {
                 0 => Ok(
