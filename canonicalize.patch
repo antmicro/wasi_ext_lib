@@ -1,0 +1,48 @@
+diff --git a/library/std/src/sys/wasi/fs.rs b/library/std/src/sys/wasi/fs.rs
+index d4866bbc32b..8ba6e249d54 100644
+--- a/library/std/src/sys/wasi/fs.rs
++++ b/library/std/src/sys/wasi/fs.rs
+@@ -1,6 +1,7 @@
+ #![deny(unsafe_op_in_unsafe_fn)]
+ 
+ use super::fd::WasiFd;
++use crate::env;
+ use crate::ffi::{CStr, OsStr, OsString};
+ use crate::fmt;
+ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+@@ -649,10 +650,31 @@ fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result
+     Ok(FileAttr { meta })
+ }
+ 
+-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
+-    // This seems to not be in wasi's API yet, and we may need to end up
+-    // emulating it ourselves. For now just return an error.
+-    unsupported()
++pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
++    Ok(PathBuf::from(format!("/{}", p.to_str().unwrap_or("/").split("/").fold(
++        if p.starts_with("/") { Vec::<String>::new() }
++        else {
++            env::current_dir().unwrap_or(PathBuf::from("/")).iter().fold(
++                Vec::<String>::new(), |mut comps, part| {
++                    if part != "" { comps.push(String::from(part.to_str().unwrap())); }
++                    comps
++            })
++        },
++        |mut comps, part| {
++            for p in if let Ok(path) = readlink(Path::new(part)) {
++                let path_str = path.as_path().to_str().unwrap();
++                if path_str.starts_with("/") { comps.clear(); }
++                path_str.split("/").map(|a| String::from(a)).collect::<Vec<String>>()
++            } else { vec![String::from(part)] } {
++                match p.as_str() {
++                    "." | "" => {},
++                    ".." => { comps.pop(); },
++                    c => { comps.push(String::from(c)); }
++                }
++            }
++            comps
++        }).join("/")
++    )))
+ }
+ 
+ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
