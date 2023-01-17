@@ -1,4 +1,5 @@
 [package]
+authors = [ "Antmicro <antmicro.com>" ]
 name = "wasi_ext_lib"
 version = "0.1.0"
 edition = "2021"
