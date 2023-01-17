@@ -5,9 +5,13 @@ Copyright (c) 2022-2023 [Antmicro](https://www.antmicro.com).
 This repo contains custom api for syscalls that are not yet implemented in `wasi`. In order to keep compiled binaries compatible with other runtimes, these syscalls are not explicitly added to wasi standard, but are redirected from `path_readlink`.
 
 ## Build
+To build Rust and C libs you need [wasi-sdk](https://github.com/WebAssembly/wasi-sdk), for instalation instruction, visit: https://github.com/WebAssembly/wasi-sdk#install. Export `WASI_SDK_PATH` environment variable:
+```
+export WASI_SDK_PATH="/path/to/wasi-sdk"
+```
 
 ### Rust library
-There is needed custom nightly Rust toolchain. `canonicalize.patch` file should be applied to `beta` branch of the official Rust repository. Build toolchain and `wasi_ext_lib` as following:
+You will need a custom Rust nightly toolchain. `canonicalize.patch` file should be applied to `beta` branch of the official Rust repository. Build toolchain and `wasi_ext_lib` as following:
 
 ```
 # clone repos
@@ -34,7 +38,6 @@ cargo +stage2 build --target wasm32-wasi --release
 ```
 
 ### C library
-
 ```
 (cd c_lib && make)
 ```
