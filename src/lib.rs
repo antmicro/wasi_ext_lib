@@ -3,6 +3,8 @@ use std::str;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::convert::AsRef;
+use std::ffi::CString;
+use std::os::wasi::ffi::OsStrExt;
 
 use serde_json::json;
 use serde::{Serialize, Serializer};
@@ -15,6 +17,28 @@ pub enum Redirect {
     Read((wasi::Fd, String)),
     Write((wasi::Fd, String)),
     Append((wasi::Fd, String)),
+}
+
+extern "C" {
+    pub(crate) fn wasi_ext_chdir(path: *const libc::c_char) -> i32;
+}
+
+pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
+    if let Ok(canon) = std::fs::canonicalize(&path) {
+        if let Err(_) = std::env::set_current_dir(&canon) {
+            return Err(wasi::ERRNO_NOENT.raw().into())
+        };
+        let pth = match CString::new(path.as_ref().as_os_str().as_bytes()) {
+            Ok(p) => p,
+            Err(_) => { return Err(wasi::ERRNO_INVAL.raw().into()) }
+        };
+        match unsafe { wasi_ext_chdir(pth.as_ptr()) } {
+            0 => Ok(()),
+            e => Err(e)
+        }
+    } else {
+        Err(wasi::ERRNO_INVAL.raw().into())
+    }
 }
 
 pub struct SyscallResult {
@@ -106,23 +130,6 @@ pub fn spawn(
     }
 }
 
-pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
-    if let Ok(canon) = std::fs::canonicalize(path) {
-        if let Err(_) = std::env::set_current_dir(&canon) {
-            return Err(wasi::ERRNO_NOENT.raw().into())
-        };
-        match syscall("chdir", &json!({ "dir": &canon })) {
-            Ok(result) => {
-                if let 0 = result.exit_status {
-                    Ok(())
-                } else {
-                    Err(result.exit_status)
-                }
-            }
-            Err(e) => Err(e.raw().into())
-        }
-    } else { Err(wasi::ERRNO_INVAL.raw().into()) }
-}
 
 pub fn getcwd() -> Result<String, ExitCode> {
     match syscall("getcwd", &json!({"buf_len": 1024})) {

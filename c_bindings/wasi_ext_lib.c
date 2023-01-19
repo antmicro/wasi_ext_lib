@@ -5,6 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "wasi_ext_lib.h"
+
 #define SYSCALL_LENGTH 256
 #define SYSCALL_ARGS_LENGTH 2048
 
@@ -48,9 +50,4 @@ int wasi_ext_set_env(char *attrib, char *val) {
         sprintf(args, "{ \"attrib\": %s }", attrib);
     }
     return __syscall("set_env", args, NULL, 0);
-}
-
-int main(int argc, char **argv) {
-    printf("%d\n", wasi_ext_chdir(argv[1]));
-    return 0;
 }

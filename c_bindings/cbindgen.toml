@@ -1,3 +1,0 @@
-language = "C"
-header = "#ifndef __WASI_EXT_LIBC\n#define __WASI_EXT_LIBC"
-trailer = "#endif"
