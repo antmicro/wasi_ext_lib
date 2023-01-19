@@ -182,3 +182,33 @@ pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
         Err(e) => Err(e.raw().into())
     }
 }
+
+#[cfg(feature = "hterm")]
+pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode> {
+    match val {
+        Some(value) => {
+            match syscall("hterm", &json!({ "method": "set", "attrib": attrib, "val": value })) {
+                Ok(result) => {
+                    if let 0 = result.exit_status {
+                        Ok(None)
+                    } else {
+                        Err(result.exit_status)
+                    }
+                }
+                Err(e) => Err(e.raw().into())
+            }
+        },
+        None => {
+            match syscall("hterm", &json!({ "method": "get", "attrib": attrib })) {
+                Ok(result) => {
+                    if let 0 = result.exit_status {
+                        Ok(Some(result.output))
+                    } else {
+                        Err(result.exit_status)
+                    }
+                }
+                Err(e) => Err(e.raw().into())
+            }
+        }
+    }
+}

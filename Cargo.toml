@@ -9,3 +9,6 @@ edition = "2021"
 wasi = "0.11.0"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
+
+[features]
+hterm = []
