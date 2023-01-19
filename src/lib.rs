@@ -123,7 +123,7 @@ pub fn chdir(path: &str) -> Result<(), ExitCode> {
 }
 
 pub fn getcwd() -> Result<String, ExitCode> {
-    match syscall("getcwd", &json!({})) {
+    match syscall("getcwd", &json!({"buf_len": 1024})) {
         Ok(result) => {
             if let 0 = result.exit_status {
                 Ok(result.output)
