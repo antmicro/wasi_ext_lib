@@ -169,3 +169,16 @@ pub fn set_env(key: &str, value: &str) -> Result<(), ExitCode> {
         Err(e) => Err(e.raw().into())
     }
 }
+
+pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
+    match syscall("set_echo", &json!({"echo": should_echo})) {
+        Ok(result) => {
+            if let 0 = result.exit_status {
+                Ok(())
+            } else {
+                Err(result.exit_status)
+            }
+        }
+        Err(e) => Err(e.raw().into())
+    }
+}
