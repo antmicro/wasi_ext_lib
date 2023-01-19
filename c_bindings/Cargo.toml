@@ -1,0 +1,17 @@
+[package]
+name = "wasi_ext_libc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasi_ext_lib = { path="../wasi-ext", features = ["hterm"] }
+wasi = "0.11.0"
+libc = "0.2.136"
+
+[lib]
+crate-type = ["staticlib"]
+
+[net]
+git-fetch-with-cli = true
