@@ -109,6 +109,10 @@ pub fn spawn(
 }
 
 pub fn chdir(path: &str) -> Result<(), ExitCode> {
+    match std::env::set_current_dir(path) {
+        Ok(()) => (),
+        Err(_) => return Err(wasi::ERRNO_NOENT.raw().into())
+    };
     match syscall("chdir", &json!({ "dir": path })) {
         Ok(result) => {
             if let 0 = result.exit_status {
@@ -118,6 +122,19 @@ pub fn chdir(path: &str) -> Result<(), ExitCode> {
             }
         }
         Err(e) => Err(e.raw().into())
+    }
+}
+
+pub fn getcwd() -> Result<String, ExitCode> {
+    match syscall("getcwd", &json!({})) {
+        Ok(result) => {
+            if let 0 = result.exit_status {
+                Ok(result.output)
+            } else {
+                Err(result.exit_status)
+            }
+        }
+        Err(e) => Err(e.raw().into()),
     }
 }
 
