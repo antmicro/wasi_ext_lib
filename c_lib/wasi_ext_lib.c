@@ -13,7 +13,8 @@
 #include <errno.h>
 
 #include "wasi_ext_lib.h"
-#include "json/json.h"
+
+#include <json/json.h>
 
 #define SYSCALL_LENGTH 256
 #define SYSCALL_ARGS_LENGTH 2048
