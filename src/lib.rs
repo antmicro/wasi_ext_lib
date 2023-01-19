@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::str;
 use std::env;
+use std::path::PathBuf;
 
 use serde_json::json;
 use serde::{Serialize, Serializer};
@@ -8,8 +9,6 @@ use serde::ser::SerializeStruct;
 
 type ExitCode = i32;
 type Pid = u32;
-
-const EXIT_SUCCESS: ExitCode = 0;
 
 pub enum Redirect {
     Read((wasi::Fd, String)),
@@ -96,7 +95,7 @@ pub fn spawn(
         "env": env,
         "redirects": redirects,
         "background": background,
-        "working_dir": env::current_dir(),
+        "working_dir": env::current_dir().unwrap_or(PathBuf::from("/")),
     })) {
         Ok(result) => {
             if let 0 = result.exit_status {
@@ -135,6 +134,7 @@ pub fn isatty(fd: wasi::Fd) -> Result<bool, ExitCode> {
                 Err(result.exit_status)
             }
         },
+        Err(e) => return Err(e.raw().into())
     }
 }
 
@@ -150,7 +150,8 @@ pub fn getpid() -> Result<Pid, ExitCode> {
             } else {
                 Err(result.exit_status)
             }
-        }
+        },
+        Err(e) => Err(e.raw().into())
     }
 }
 
