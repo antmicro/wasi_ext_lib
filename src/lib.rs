@@ -88,7 +88,7 @@ pub fn spawn(
     env: &HashMap<String, String>,
     background: bool,
     redirects: &[Redirect]
-) -> Result<(), ExitCode> {
+) -> Result<ExitCode, ExitCode> {
     match syscall("spawn", &json!({
         "path": path,
         "args": args,
@@ -97,13 +97,7 @@ pub fn spawn(
         "background": background,
         "working_dir": env::current_dir().unwrap_or(PathBuf::from("/")),
     })) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(())
-            } else {
-                Err(result.exit_status)
-            }
-        },
+        Ok(result) => Ok(result.exit_status),
         Err(e) => Err(e.raw().into())
     }
 }
