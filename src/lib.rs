@@ -1,10 +1,14 @@
 use std::collections::HashMap;
+use std::str;
+use std::env;
 
 use serde_json::json;
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeStruct;
 
 const EXIT_SUCCESS: i32 = 0;
+
+type PID = u32;
 
 pub enum Redirect {
     Read((wasi::Fd, String)),
@@ -41,54 +45,60 @@ impl Serialize for Redirect {
     }
 }
 
-pub fn syscall(
+fn syscall(
     command: &str,
-    args: &[&str],
-    env: &HashMap<String, String>,
-    background: bool,
-    redirects: &[Redirect],
-) -> std::io::Result<SyscallResult> {
-    let result = {
-        let working_dir = match std::env::current_dir() {
-            Ok(path) => {
-                path.display().to_string()
-            },
-            Err(e) => {
-                eprintln!("Parsing current directory path error: {}", e);
-                String::from("/")
-            },
-        };
-
-        let j = json!({
-            "args": args,
-            "env": env,
-            "redirects": redirects,
-            "background": background,
-            "working_dir": working_dir,
-        }).to_string();
+    data: &serde_json::Value
+) -> Result<String, wasi::Errno> {
+    Ok({
+        let j = data.to_string();
         let c = json!({
             "command": command,
             "buf_len": j.len(),
             "buf_ptr": format!("{:?}", j.as_ptr()),
         }).to_string();
-        let result = std::fs::read_link(format!("/!{}", c))?
-            .to_str()
-            .unwrap()
-            .trim_matches(char::from(0))
-            .to_string();
-        if !background {
-            let (exit_status, output) = result.split_once("\x1b").unwrap();
-            let exit_status = exit_status.parse::<i32>().unwrap();
-            SyscallResult {
-                exit_status,
-                output: output.to_string(),
-            }
-        } else {
-            SyscallResult {
-                exit_status: EXIT_SUCCESS,
-                output: "".to_string(),
+
+        const BUF_LEN: usize = 1024;
+        let mut buf = vec![0u8; BUF_LEN];
+        unsafe {
+            let result_len = wasi::path_readlink(4, &format!("/!{}", c), buf.as_mut_ptr(), BUF_LEN)?;
+            match str::from_utf8(&buf[0..result_len]) {
+                Ok(s) => String::from(s),
+                Err(_) => return Err(wasi::ERRNO_BADMSG)
             }
         }
-    };
-    Ok(result)
+    })
+}
+
+pub fn spawn(
+    path: &str,
+    args: &[&str],
+    env: &HashMap<String, String>,
+    background: bool,
+    redirects: &[Redirect]
+) -> Result<SyscallResult, String> {
+    match syscall("spawn", &json!({
+        "path": path,
+        "args": args,
+        "env": env,
+        "redirects": redirects,
+        "background": background,
+        "working_dir": env::current_dir(),
+    })) {
+        Ok(result) => {
+            if !background {
+                let (exit_status, output) = result.split_once("\x1b").unwrap();
+                let exit_status = exit_status.parse::<i32>().unwrap();
+                Ok(SyscallResult {
+                    exit_status,
+                    output: output.to_string(),
+                })
+            } else {
+                Ok(SyscallResult {
+                    exit_status: EXIT_SUCCESS,
+                    output: "".to_string(),
+                })
+            }
+        },
+        Err(e) => Err(String::from("Could not spawn process"))
+    }
 }
