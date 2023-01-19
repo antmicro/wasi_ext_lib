@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::str;
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::convert::AsRef;
 
 use serde_json::json;
 use serde::{Serialize, Serializer};
@@ -105,21 +106,22 @@ pub fn spawn(
     }
 }
 
-pub fn chdir(path: &str) -> Result<(), ExitCode> {
-    match std::env::set_current_dir(path) {
-        Ok(()) => (),
-        Err(_) => return Err(wasi::ERRNO_NOENT.raw().into())
-    };
-    match syscall("chdir", &json!({ "dir": path })) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(())
-            } else {
-                Err(result.exit_status)
+pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
+    if let Ok(canon) = std::fs::canonicalize(path) {
+        if let Err(_) = std::env::set_current_dir(&canon) {
+            return Err(wasi::ERRNO_NOENT.raw().into())
+        };
+        match syscall("chdir", &json!({ "dir": &canon })) {
+            Ok(result) => {
+                if let 0 = result.exit_status {
+                    Ok(())
+                } else {
+                    Err(result.exit_status)
+                }
             }
+            Err(e) => Err(e.raw().into())
         }
-        Err(e) => Err(e.raw().into())
-    }
+    } else { Err(wasi::ERRNO_INVAL.raw().into()) }
 }
 
 pub fn getcwd() -> Result<String, ExitCode> {

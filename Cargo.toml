@@ -12,3 +12,6 @@ serde = { version = "1", features = ["derive"] }
 
 [features]
 hterm = []
+
+[lib]
+crate-type=["rlib"]
