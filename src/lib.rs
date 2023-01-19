@@ -88,7 +88,7 @@ pub fn spawn(
     env: &HashMap<String, String>,
     background: bool,
     redirects: &[Redirect]
-) -> Result<(), String> {
+) -> SyscallResult {
     match syscall("spawn", &json!({
         "path": path,
         "args": args,
@@ -97,14 +97,11 @@ pub fn spawn(
         "background": background,
         "working_dir": env::current_dir().unwrap_or(PathBuf::from("/")),
     })) {
-        Ok(result) => {
-            if let 0 = result.exit_status {
-                Ok(())
-            } else {
-                Err(result.output)
-            }
+        Ok(result) => result,
+        Err(e) => SyscallResult {
+            exit_status: e.raw().into(),
+            output: String::from("Could not invoke syscall")
         }
-        Err(e) => Err(e.to_string())
     }
 }
 
