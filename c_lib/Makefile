@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 bin_dir := bin
 third_party_dir := third_party
 ar = ${WASI_SDK_PATH}/bin/ar
