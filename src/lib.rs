@@ -60,7 +60,7 @@ fn syscall(
         const BUF_LEN: usize = 1024;
         let mut buf = vec![0u8; BUF_LEN];
         unsafe {
-            let result_len = wasi::path_readlink(4, &format!("/!{}", c), buf.as_mut_ptr(), BUF_LEN)?;
+            let result_len = wasi::path_readlink(3, &format!("!{}", c), buf.as_mut_ptr(), BUF_LEN)?;
             match str::from_utf8(&buf[0..result_len]) {
                 Ok(result) => {
                     if let Some((exit_status, output)) = result.split_once("\x1b") {
