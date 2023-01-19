@@ -6,10 +6,10 @@ use serde_json::json;
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeStruct;
 
-type PID = u32;
-type EXIT_CODE = i32;
+type ExitCode = i32;
+type Pid = u32;
 
-const EXIT_SUCCESS: EXIT_CODE = 0;
+const EXIT_SUCCESS: ExitCode = 0;
 
 pub enum Redirect {
     Read((wasi::Fd, String)),
@@ -49,7 +49,7 @@ impl Serialize for Redirect {
 fn syscall(
     command: &str,
     data: &serde_json::Value
-) -> Result<String, wasi::Errno> {
+) -> Result<SyscallResult, wasi::Errno> {
     Ok({
         let j = data.to_string();
         let c = json!({
@@ -63,7 +63,20 @@ fn syscall(
         unsafe {
             let result_len = wasi::path_readlink(4, &format!("/!{}", c), buf.as_mut_ptr(), BUF_LEN)?;
             match str::from_utf8(&buf[0..result_len]) {
-                Ok(s) => String::from(s),
+                Ok(result) => {
+                    if let Some((exit_status, output)) = result.split_once("\x1b") {
+                        SyscallResult{
+                            exit_status: if let Ok(n) = exit_status.parse::<i32>() {
+                                n
+                            } else {
+                                return Err(wasi::ERRNO_BADMSG)
+                            },
+                            output: output.to_string()
+                        }
+                    } else {
+                        return Err(wasi::ERRNO_BADMSG)
+                    }
+                }
                 Err(_) => return Err(wasi::ERRNO_BADMSG)
             }
         }
@@ -76,7 +89,7 @@ pub fn spawn(
     env: &HashMap<String, String>,
     background: bool,
     redirects: &[Redirect]
-) -> Result<SyscallResult, String> {
+) -> Result<(), ExitCode> {
     match syscall("spawn", &json!({
         "path": path,
         "args": args,
@@ -86,34 +99,57 @@ pub fn spawn(
         "working_dir": env::current_dir(),
     })) {
         Ok(result) => {
-            if !background {
-                let (exit_status, output) = result.split_once("\x1b").unwrap();
-                let exit_status = exit_status.parse::<i32>().unwrap();
-                Ok(SyscallResult {
-                    exit_status,
-                    output: output.to_string(),
-                })
+            if let 0 = result.exit_status {
+                Ok(())
             } else {
-                Ok(SyscallResult {
-                    exit_status: EXIT_SUCCESS,
-                    output: "".to_string(),
-                })
+                Err(result.exit_status)
             }
         },
-        Err(e) => Err(String::from(format!("Could not spawn process ({:?})", e)))
+        Err(e) => Err(e.raw().into())
     }
 }
 
-pub fn chdir(path: &str) -> Result<(), String> {
+pub fn chdir(path: &str) -> Result<(), ExitCode> {
     match syscall("chdir", &json!({ "dir": path })) {
         Ok(result) => {
-            let (exit_status, output) = result.split_once("\x1b").unwrap();
-            if let 0 = exit_status.parse::<i32>().unwrap() {
+            if let 0 = result.exit_status {
                 Ok(())
             } else {
-                Err(format!("Could not change working directory ({})", exit_status))
+                Err(result.exit_status)
             }
         }
-        Err(e) => Err(format!("Could not change working directory ({:?})", e))
+        Err(e) => Err(e.raw().into())
+    }
+}
+
+pub fn isatty(fd: wasi::Fd) -> Result<bool, ExitCode> {
+    match syscall("isatty", &json!({ "fd": fd })) {
+        Ok(result) => {
+            if let 0 = result.exit_status {
+                Ok(match result.output.as_str() {
+                    "0" => false,
+                    "1" => true,
+                    _ => return Err(wasi::ERRNO_BADMSG.raw().into())
+                })
+            } else {
+                Err(result.exit_status)
+            }
+        },
+    }
+}
+
+pub fn getpid() -> Result<Pid, ExitCode> {
+    match syscall("getpid", &json!({})) {
+        Ok(result) => {
+            if let 0 = result.exit_status {
+                if let Ok(a) = result.output.parse::<u32>() {
+                    Ok(a)
+                } else {
+                    Err(wasi::ERRNO_BADMSG.raw().into())
+                }
+            } else {
+                Err(result.exit_status)
+            }
+        }
     }
 }
