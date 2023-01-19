@@ -6,9 +6,10 @@ use serde_json::json;
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeStruct;
 
-const EXIT_SUCCESS: i32 = 0;
-
 type PID = u32;
+type EXIT_CODE = i32;
+
+const EXIT_SUCCESS: EXIT_CODE = 0;
 
 pub enum Redirect {
     Read((wasi::Fd, String)),
@@ -99,6 +100,20 @@ pub fn spawn(
                 })
             }
         },
-        Err(e) => Err(String::from("Could not spawn process"))
+        Err(e) => Err(String::from(format!("Could not spawn process ({:?})", e)))
+    }
+}
+
+pub fn chdir(path: &str) -> Result<(), String> {
+    match syscall("chdir", &json!({ "dir": path })) {
+        Ok(result) => {
+            let (exit_status, output) = result.split_once("\x1b").unwrap();
+            if let 0 = exit_status.parse::<i32>().unwrap() {
+                Ok(())
+            } else {
+                Err(format!("Could not change working directory ({})", exit_status))
+            }
+        }
+        Err(e) => Err(format!("Could not change working directory ({:?})", e))
     }
 }
