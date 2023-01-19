@@ -172,11 +172,17 @@ pub fn getpid() -> Result<Pid, ExitCode> {
     }
 }
 
-pub fn set_env(key: &str, value: &str) -> Result<(), ExitCode> {
-    match syscall("set_env", &json!({
-        "key": key,
-        "value": value
-    })) {
+pub fn set_env(key: &str, val: Option<&str>) -> Result<(), ExitCode> {
+    match syscall("set_env", &if let Some(value) = val {
+        json!({
+            "key": key,
+            "value": value
+        })
+    } else {
+        json!({
+            "key": key,
+        })
+    }) {
         Ok(result) => {
             if let 0 = result.exit_status {
                 Ok(())
