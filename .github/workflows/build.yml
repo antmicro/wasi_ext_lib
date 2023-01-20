@@ -1,0 +1,25 @@
+name: build library
+
+on: push
+
+jobs:
+  build-library:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Setup Rust toolchain
+        run: |
+          git clone https://github.com/rust-lang/rust.git -b beta
+          cd rust
+          git apply ../canonicalize.patch
+          mkdir tmp
+          cd tmp ../src/ci/docker/host-x86_64/dist-various-2/build-wasi-toolchain.sh
+          cd ..
+          ./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=/wasm32-wasi --enable-lld --tools=cargo
+          ./x.py build --target x86_64-unknown-linux-gnu --target wasm32-wasi --stage 2
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2> /dev/null
+          rustup toolchain link stage2 "$(pwd)/build/x86_64-unknown-linux-gnu/stage2"
+      - name: Build
+        run: cargo +stage2 build --target wasm32-wasi --release --features hterm
+
