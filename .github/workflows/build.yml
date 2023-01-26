@@ -18,11 +18,20 @@ jobs:
       - name: Run C linter
         run: |
           cd c_lib
-          TIDY_OUT=${TMPDIR:-/tmp}/clang-tidy-surelog.out
+          TIDY_OUT=${TMPDIR:-/tmp}/clang-tidy-log.out
           ${WASI_SDK_PATH}/bin/clang-tidy *.[ch] -- -I third_party > ${TIDY_OUT}
           cat ${TIDY_OUT}
           if [ -s ${TIDY_OUT} ]; then
             echo "There were clang-tidy warnings. Please fix."
+            exit 1
+          fi
+      - name: Run C formater
+        run: |
+          cd c_lib
+          ${WASI_SDK_PATH}/bin/clang-format --style="{BasedOnStyle: llvm, IndentWidth: 4}" *.[ch] -i
+          if [ -n "$(git status --porcelain --untracked-files="no")" ]; then
+            git status --porcelain --untracked-files="no"
+            echo "There were not well formated files. Please fix."
             exit 1
           fi
       - name: Setup Rust toolchain
