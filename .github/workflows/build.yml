@@ -8,14 +8,26 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-      - name: Setup Rust toolchain
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-dev clang cmake wget ninja-build
-          git clone https://github.com/rust-lang/rust.git -b beta
           wget -q https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-16/wasi-sdk-16.0-linux.tar.gz
           tar xvf wasi-sdk-16.0-linux.tar.gz
           echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-16.0" >> "$GITHUB_ENV"
+      - name: Run C linter
+        run: |
+          cd c_lib
+          TIDY_OUT=${TMPDIR:-/tmp}/clang-tidy-surelog.out
+          ${WASI_SDK_PATH}/bin/clang-tidy *.[ch] -- -I third_party > ${TIDY_OUT}
+          cat ${TIDY_OUT}
+          if [ -s ${TIDY_OUT} ]; then
+            echo "There were clang-tidy warnings. Please fix."
+            exit 1
+          fi
+      - name: Setup Rust toolchain
+        run: |
+          git clone https://github.com/rust-lang/rust.git -b beta
           cd rust
           git apply ../canonicalize.patch
           mkdir tmp

@@ -39,8 +39,8 @@ JsonNode *json_mkredirect(struct Redirect redir) {
 }
 
 int __syscall(const char *command, char *args, uint8_t *output_buf, size_t output_buf_len) {
-    char ptr[32];
-    sprintf(ptr, "%p", args);
+    char *ptr;
+    asprintf(&ptr, "%p", args);
     JsonNode *root = json_mkobject();
     json_append_member(root, "command", json_mkstring(command));
     json_append_member(root, "buf_len", json_mknumber((double) strlen(args)));
@@ -51,6 +51,7 @@ int __syscall(const char *command, char *args, uint8_t *output_buf, size_t outpu
 
     size_t written;
     int err = __wasi_path_readlink(3, serialized, output_buf, output_buf_len, &written);
+    free(ptr);
     free(serialized);
     return err;
 }
