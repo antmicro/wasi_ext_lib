@@ -34,7 +34,7 @@ jobs:
           ${WASI_SDK_PATH}/bin/clang-format --style="{BasedOnStyle: llvm, IndentWidth: 4}" *.[ch] -i
           if [ -n "$(git status --porcelain --untracked-files='no')" ]; then
             git status --porcelain --untracked-files="no"
-            echo "There were not well formated files. Please fix."
+            echo "There were not well formated C files. Please fix."
             exit 1
           fi
       - name: Run Rust linter
@@ -45,6 +45,15 @@ jobs:
           cat ${CLIPPY_OUT}
           if [ -s ${CLIPPY_OUT} ]; then
             echo "There were cargo-clippy warnings. Please fix."
+            exit 1
+          fi
+      - name: Run Rust formater
+        run: |
+          source $HOME/.cargo/env
+          cargo fmt
+          if [ -n "$(git status --porcelain --untracked-files='no')" ]; then
+            git status --porcelain --untracked-files="no"
+            echo "There were not well formated Rust files. Please fix."
             exit 1
           fi
       - name: Setup Rust toolchain
