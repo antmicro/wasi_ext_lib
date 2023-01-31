@@ -47,15 +47,15 @@ impl From<Redirect<'_>> for CStringRedirect {
         match redirect {
             Redirect::Read((fd, path)) => CStringRedirect::Read((
                 fd,
-                CString::new(&path[..]).unwrap()
+                CString::new(path).unwrap()
             )),
             Redirect::Write((fd, path)) => CStringRedirect::Write((
                 fd,
-                CString::new(&path[..]).unwrap()
+                CString::new(path).unwrap()
             )),
             Redirect::Append((fd, path)) => CStringRedirect::Append((
                 fd,
-                CString::new(&path[..]).unwrap()
+                CString::new(path).unwrap()
             )),
         }
     }
@@ -83,8 +83,8 @@ unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirec
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
     if let Ok(canon) = fs::canonicalize(path.as_ref()) {
-        if let Err(e) = env::set_current_dir(&canon.as_path()) {
-            return Err(e.raw_os_error().unwrap_or(wasi::ERRNO_INVAL.raw().into()))
+        if let Err(e) = env::set_current_dir(canon.as_path()) {
+            return Err(e.raw_os_error().unwrap_or_else(|| wasi::ERRNO_INVAL.raw().into()))
         };
         let pth = match CString::new(canon.as_os_str().as_bytes()) {
             Ok(p) => p,
@@ -118,7 +118,7 @@ pub fn getcwd() -> Result<String, ExitCode> {
         buf_size *= 2;
         buf.resize(buf_size, 0u8);
     }
-    return Err(wasi::ERRNO_NAMETOOLONG.raw().into())
+    Err(wasi::ERRNO_NAMETOOLONG.raw().into())
 }
 
 pub fn isatty(fd: i32) -> Result<bool, ExitCode> {
@@ -171,8 +171,8 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
         Some(value) => {
             match unsafe {
                 wasi_ext_lib_generated::wasi_ext_hterm_set(
-                    CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
-                    CString::new(&value[..]).unwrap().as_c_str().as_ptr() as *const i8
+                    CString::new(attrib).unwrap().as_c_str().as_ptr() as *const i8,
+                    CString::new(value).unwrap().as_c_str().as_ptr() as *const i8
                 )
             } {
                 0 => Ok(None),
@@ -184,7 +184,7 @@ pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode
             let mut buf = [0u8; OUTPUT_LEN];
             match unsafe {
                 wasi_ext_lib_generated::wasi_ext_hterm_get(
-                    CString::new(&attrib[..]).unwrap().as_c_str().as_ptr() as *const i8,
+                    CString::new(attrib).unwrap().as_c_str().as_ptr() as *const i8,
                     buf.as_mut_ptr() as *mut i8,
                     OUTPUT_LEN
                 )

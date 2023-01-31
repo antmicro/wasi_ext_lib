@@ -15,6 +15,9 @@ jobs:
           wget -q https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-16/wasi-sdk-16.0-linux.tar.gz
           tar xvf wasi-sdk-16.0-linux.tar.gz
           echo "WASI_SDK_PATH=$(pwd)/wasi-sdk-16.0" >> "$GITHUB_ENV"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2> /dev/null
+          source $HOME/.cargo/env
+          rustup target add wasm32-wasi
       - name: Run C linter
         run: |
           cd c_lib
@@ -29,9 +32,19 @@ jobs:
         run: |
           cd c_lib
           ${WASI_SDK_PATH}/bin/clang-format --style="{BasedOnStyle: llvm, IndentWidth: 4}" *.[ch] -i
-          if [ -n "$(git status --porcelain --untracked-files="no")" ]; then
+          if [ -n "$(git status --porcelain --untracked-files='no')" ]; then
             git status --porcelain --untracked-files="no"
             echo "There were not well formated files. Please fix."
+            exit 1
+          fi
+      - name: Run Rust linter
+        run: |
+          source $HOME/.cargo/env
+          CLIPPY_OUT=${TMPDIR:-/tmp}/cargo-clippy-log.out
+          cargo clippy --target wasm32-wasi --features hterm --quiet 2> ${CLIPPY_OUT}
+          cat ${CLIPPY_OUT}
+          if [ -s ${CLIPPY_OUT} ]; then
+            echo "There were cargo-clippy warnings. Please fix."
             exit 1
           fi
       - name: Setup Rust toolchain
@@ -45,7 +58,6 @@ jobs:
           cd ..
           ./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=/wasm32-wasi --enable-lld --tools=cargo
           ./x.py build --target x86_64-unknown-linux-gnu --target wasm32-wasi --stage 2
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2> /dev/null
           source $HOME/.cargo/env
           rustup toolchain link stage2 "$(pwd)/build/x86_64-unknown-linux-gnu/stage2"
           cargo --version
