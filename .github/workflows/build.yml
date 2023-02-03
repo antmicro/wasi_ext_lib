@@ -66,13 +66,13 @@ jobs:
           sudo ../src/ci/docker/host-x86_64/dist-various-2/build-wasi-toolchain.sh
           cd ..
           ./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=/wasm32-wasi --enable-lld --tools=cargo
-          ./x.py build --target x86_64-unknown-linux-gnu --target wasm32-wasi --stage 2
+          ./x.py build --target wasm32-wasi --stage 0
           source $HOME/.cargo/env
-          rustup toolchain link stage2 "$(pwd)/build/x86_64-unknown-linux-gnu/stage2"
+          rustup toolchain link wasi_extended "$(pwd)/build/x86_64-unknown-linux-gnu/stage0"
           cargo --version
       - name: Build
         run: |
           source $HOME/.cargo/env
           export CC="${WASI_SDK_PATH}/bin/clang --sysroot=${WASI_SDK_PATH}/share/wasi-sysroot"
-          cargo +stage2 build --target wasm32-wasi --release --features hterm
+          cargo +wasi_extended build --target wasm32-wasi --release --features hterm
 
