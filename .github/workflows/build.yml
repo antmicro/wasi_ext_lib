@@ -61,14 +61,10 @@ jobs:
           git clone https://github.com/rust-lang/rust.git -b beta
           cd rust
           git apply ../canonicalize.patch
-          mkdir tmp
-          cd tmp
-          sudo ../src/ci/docker/host-x86_64/dist-various-2/build-wasi-toolchain.sh
-          cd ..
-          ./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=/wasm32-wasi --enable-lld --tools=cargo
-          ./x.py build --target wasm32-wasi --stage 0
+          ./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=${WASI_SDK_PATH}/share/sysroot --enable-lld --tools=cargo
+          ./x.py build --target wasm32-wasi --target x86_64-unknown-linux-gnu --stage 1
           source $HOME/.cargo/env
-          rustup toolchain link wasi_extended "$(pwd)/build/x86_64-unknown-linux-gnu/stage0"
+          rustup toolchain link wasi_extended "$(pwd)/build/x86_64-unknown-linux-gnu/stage1"
           cargo --version
       - name: Build
         run: |
