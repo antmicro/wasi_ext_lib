@@ -51,3 +51,6 @@ In order to build the C library, run:
 ```
 (cd c_lib && make)
 ```
+
+This command produces `libwasi_ext_lib.a` file in `c_lib/bin` directory.
+It is a static library, you can link it by appending `-L<path_to_wasi_ext_lib>/c_lib/bin -lwasi_ext_lib` to the `clang` command.
