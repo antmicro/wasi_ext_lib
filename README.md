@@ -19,7 +19,7 @@ export WASI_SDK_PATH="/path/to/wasi-sdk"
 
 You will need a custom Rust nightly toolchain.
 The `canonicalize.patch` file should be applied to the `beta` branch of the official Rust repository.
-Build the toolchain and `wasi_ext_lib` by following the steps below:
+Build the toolchain by following the steps below:
 
 ```
 # clone repos
@@ -32,17 +32,20 @@ git checkout beta
 git apply ../wasi_ext_lib/canonicalize.patch
 
 # build toolchain, remember to meet all dependencies required by Rust
-mkdir tmp
-cd tmp
-../src/ci/docker/host-x86_64/dist-various-2/build-wasi-toolchain.sh
-cd ..
-./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=/wasm32-wasi --enable-lld --tools=cargo
-./x.py build --target x86_64-unknown-linux-gnu --target wasm32-wasi --stage 2
+./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --enable-lld --tools=cargo
+./x.py build --target wasm32-wasi --target x86_64-unknown-linux-gnu --stage 1
 
 # link toolchain and build `wasi_ext_lib`
-rustup toolchain link stage2 "$(pwd)/build/x86_64-unknown-linux-gnu/stage2"
-cd ../wasi_ext_lib
-cargo +stage2 build --target wasm32-wasi --release
+rustup toolchain link wasi_extended "$(pwd)/build/host/stage1"
+```
+
+Note that `rustup toolchain link` command only creates a symlink to the given target.
+If you choose to remove rust sources after building the toolchain, make sure that `stage1` directory is still under the linked path (the directory can be moved somewhere else and linked from there).
+
+After the toolchain is installed, the library can be compiled using:
+
+```
+cargo +wasi_extended build --target wasm32-wasi --release
 ```
 
 ### C library
