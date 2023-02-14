@@ -1,5 +1,5 @@
 diff --git a/library/std/src/sys/wasi/fs.rs b/library/std/src/sys/wasi/fs.rs
-index d4866bbc32b..8ba6e249d54 100644
+index d4866bbc32b..8670e9c8e15 100644
 --- a/library/std/src/sys/wasi/fs.rs
 +++ b/library/std/src/sys/wasi/fs.rs
 @@ -1,6 +1,7 @@
@@ -10,7 +10,7 @@ index d4866bbc32b..8ba6e249d54 100644
  use crate::ffi::{CStr, OsStr, OsString};
  use crate::fmt;
  use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-@@ -649,10 +650,31 @@ fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result
+@@ -649,10 +650,30 @@ fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result
      Ok(FileAttr { meta })
  }
  
@@ -19,30 +19,29 @@ index d4866bbc32b..8ba6e249d54 100644
 -    // emulating it ourselves. For now just return an error.
 -    unsupported()
 +pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-+    Ok(PathBuf::from(format!("/{}", p.to_str().unwrap_or("/").split("/").fold(
-+        if p.starts_with("/") { Vec::<String>::new() }
-+        else {
-+            env::current_dir().unwrap_or(PathBuf::from("/")).iter().fold(
-+                Vec::<String>::new(), |mut comps, part| {
-+                    if part != "" { comps.push(String::from(part.to_str().unwrap())); }
-+                    comps
-+            })
-+        },
-+        |mut comps, part| {
-+            for p in if let Ok(path) = readlink(Path::new(part)) {
-+                let path_str = path.as_path().to_str().unwrap();
-+                if path_str.starts_with("/") { comps.clear(); }
-+                path_str.split("/").map(|a| String::from(a)).collect::<Vec<String>>()
-+            } else { vec![String::from(part)] } {
-+                match p.as_str() {
-+                    "." | "" => {},
-+                    ".." => { comps.pop(); },
-+                    c => { comps.push(String::from(c)); }
++    fn __canonicalize(path: &Path, buf: &mut PathBuf) {
++        if path.is_absolute() {
++            buf.clear();
++        }
++        for part in path {
++            if part == ".." {
++                buf.pop();
++            } else if part != "." {
++                buf.push(part);
++                if let Ok(linkpath) = buf.read_link() {
++                    buf.pop();
++                    __canonicalize(&linkpath, buf);
 +                }
 +            }
-+            comps
-+        }).join("/")
-+    )))
++        }
++    }
++    let mut path = if p.is_absolute() {
++        PathBuf::new()
++    } else {
++        PathBuf::from(env::current_dir()?)
++    };
++    __canonicalize(p, &mut path);
++    Ok(path)
  }
  
  fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
