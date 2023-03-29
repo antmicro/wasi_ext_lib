@@ -21,7 +21,7 @@ use std::str;
 mod wasi_ext_lib_generated;
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
-    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_WINCH,
+    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_WINCH, WASI_EVENT_SIGINT
 };
 
 type ExitCode = i32;
