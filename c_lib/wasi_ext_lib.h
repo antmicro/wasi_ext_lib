@@ -39,6 +39,7 @@ int wasi_ext_set_echo(int);
 int wasi_ext_hterm_get(const char *, char *, size_t);
 int wasi_ext_hterm_set(const char *, const char *);
 int wasi_ext_event_source_fd(uint32_t);
+int wasi_ext_attach_sigint(int32_t);
 #endif
 int wasi_ext_clean_inodes();
 int wasi_ext_spawn(const char *, const char *const *, size_t,

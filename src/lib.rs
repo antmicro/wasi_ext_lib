@@ -215,6 +215,16 @@ pub fn event_source_fd(event_mask: WasiEvents) -> Result<RawFd, ExitCode> {
     }
 }
 
+#[cfg(feature = "hterm")]
+pub fn attach_sigint(fd: RawFd) -> Result<(), ExitCode> {
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_attach_sigint(fd) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(())
+    }
+}
+
 pub fn clean_inodes() -> Result<(), ExitCode> {
     match unsafe { wasi_ext_lib_generated::wasi_ext_clean_inodes() } {
         0 => Ok(()),
