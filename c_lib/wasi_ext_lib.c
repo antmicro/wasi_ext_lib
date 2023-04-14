@@ -195,6 +195,22 @@ int wasi_ext_event_source_fd(uint32_t event_mask) {
     }
     return atoi(output);
 }
+
+int wasi_ext_attach_sigint(int32_t fd) {
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "event_source_fd", json_mknumber(fd));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    const size_t output_len = 16;
+    char output[output_len];
+
+    int err =
+        __syscall("attach_sigint", serialized, (uint8_t *)output, output_len);
+    free(serialized);
+    return -err;
+}
 #endif
 
 int wasi_ext_clean_inodes() {

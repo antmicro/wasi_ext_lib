@@ -21,7 +21,7 @@ use std::str;
 mod wasi_ext_lib_generated;
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
-    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_WINCH,
+    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
 };
 
 type ExitCode = i32;
@@ -212,6 +212,16 @@ pub fn event_source_fd(event_mask: WasiEvents) -> Result<RawFd, ExitCode> {
         Err(-result)
     } else {
         Ok(result)
+    }
+}
+
+#[cfg(feature = "hterm")]
+pub fn attach_sigint(fd: RawFd) -> Result<(), ExitCode> {
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_attach_sigint(fd) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(())
     }
 }
 

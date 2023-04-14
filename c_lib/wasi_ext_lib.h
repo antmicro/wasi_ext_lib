@@ -22,10 +22,11 @@ struct Env {
 
 #ifdef HTERM
 typedef uint32_t WasiEvents;
-const size_t WASI_EVENTS_NUM = 1;
+const size_t WASI_EVENTS_NUM = 2;
 const size_t WASI_EVENTS_MASK_SIZE = 4; // number of bytes
 // Hterm events
 const WasiEvents WASI_EVENT_WINCH = 1 << 0;
+const WasiEvents WASI_EVENT_SIGINT = 1 << 1;
 #endif
 
 int wasi_ext_chdir(const char *);
@@ -38,6 +39,7 @@ int wasi_ext_set_echo(int);
 int wasi_ext_hterm_get(const char *, char *, size_t);
 int wasi_ext_hterm_set(const char *, const char *);
 int wasi_ext_event_source_fd(uint32_t);
+int wasi_ext_attach_sigint(int32_t);
 #endif
 int wasi_ext_clean_inodes();
 int wasi_ext_spawn(const char *, const char *const *, size_t,
