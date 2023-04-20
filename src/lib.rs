@@ -292,3 +292,12 @@ pub fn spawn(
         Ok(syscall_result)
     }
 }
+
+pub fn kill(pid: Pid, signal: wasi::Signal) -> Result<(), ExitCode> {
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_kill(pid, signal.raw() as i32) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(())
+    }
+}
