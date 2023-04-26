@@ -24,6 +24,8 @@ pub use wasi_ext_lib_generated::{
     WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
 };
 
+pub use wasi::SIGNAL_KILL;
+
 type ExitCode = i32;
 type Pid = i32;
 
