@@ -258,3 +258,17 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
     else
         return result;
 }
+
+int wasi_ext_kill(int pid, int sig) {
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "process_id", json_mknumber(pid));
+    json_append_member(root, "signal", json_mknumber(sig));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("kill", serialized, NULL, 0);
+    free(serialized);
+
+    return -err;
+}

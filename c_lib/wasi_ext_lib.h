@@ -45,5 +45,6 @@ int wasi_ext_clean_inodes();
 int wasi_ext_spawn(const char *, const char *const *, size_t,
                    const struct Env *, size_t, int, const struct Redirect *,
                    size_t n_redirects);
+int wasi_ext_kill(int, int);
 
 #endif
