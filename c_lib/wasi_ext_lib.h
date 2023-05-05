@@ -44,7 +44,7 @@ int wasi_ext_attach_sigint(int32_t);
 int wasi_ext_clean_inodes();
 int wasi_ext_spawn(const char *, const char *const *, size_t,
                    const struct Env *, size_t, int, const struct Redirect *,
-                   size_t n_redirects);
+                   size_t n_redirects, int*);
 int wasi_ext_kill(int, int);
 
 #endif

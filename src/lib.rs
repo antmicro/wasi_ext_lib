@@ -240,7 +240,8 @@ pub fn spawn(
     env: &HashMap<String, String>,
     background: bool,
     redirects: Vec<Redirect>,
-) -> Result<ExitCode, ExitCode> {
+) -> Result<(ExitCode, Pid), ExitCode> {
+    let mut child_pid: Pid = -1;
     let syscall_result = unsafe {
         let cstring_args = args
             .iter()
@@ -261,6 +262,7 @@ pub fn spawn(
             .into_iter()
             .map(CStringRedirect::from)
             .collect::<Vec<CStringRedirect>>();
+
 
         wasi_ext_lib_generated::wasi_ext_spawn(
             CString::new(path).unwrap().as_c_str().as_ptr(),
@@ -286,12 +288,14 @@ pub fn spawn(
                 .collect::<Vec<wasi_ext_lib_generated::Redirect>>()
                 .as_ptr(),
             cstring_redirects.len(),
+            &mut child_pid,
+
         )
     };
     if syscall_result < 0 {
         Err(-syscall_result)
     } else {
-        Ok(syscall_result)
+        Ok((syscall_result, child_pid))
     }
 }
 
