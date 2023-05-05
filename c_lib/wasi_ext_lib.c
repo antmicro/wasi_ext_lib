@@ -98,7 +98,8 @@ int wasi_ext_isatty(int fd) {
     if (err != 0) {
         return -err;
     }
-    return atoi(output);
+    int res = *((int*)output);
+    return res;
 }
 
 int wasi_ext_set_env(const char *attrib, const char *val) {
@@ -133,7 +134,8 @@ int wasi_ext_getpid() {
     if (result != 0) {
         return -result;
     } else {
-        return atoi(output);
+        int res = *((int*)output);
+        return res;
     }
 }
 
@@ -193,7 +195,8 @@ int wasi_ext_event_source_fd(uint32_t event_mask) {
     if (err != 0) {
         return -err;
     }
-    return atoi(output);
+    int res = *((int*)output);
+    return res;
 }
 
 int wasi_ext_attach_sigint(int32_t fd) {
@@ -203,11 +206,8 @@ int wasi_ext_attach_sigint(int32_t fd) {
     char *serialized = json_stringify(0, root, " ");
     json_delete(root);
 
-    const size_t output_len = 16;
-    char output[output_len];
-
     int err =
-        __syscall("attach_sigint", serialized, (uint8_t *)output, output_len);
+        __syscall("attach_sigint", serialized, NULL, 0);
     free(serialized);
     return -err;
 }
@@ -252,7 +252,7 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
     char buf[output_len];
     int result = __syscall("spawn", call_args, (uint8_t *)buf, output_len);
     free(call_args);
-    int status = atoi(buf);
+    int status = *((int*)buf);
     if (status != 0)
         return -status;
     else
