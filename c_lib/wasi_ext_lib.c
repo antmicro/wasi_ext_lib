@@ -98,7 +98,8 @@ int wasi_ext_isatty(int fd) {
     if (err != 0) {
         return -err;
     }
-    return atoi(output);
+    int res = *((int *)output);
+    return res;
 }
 
 int wasi_ext_set_env(const char *attrib, const char *val) {
@@ -133,7 +134,8 @@ int wasi_ext_getpid() {
     if (result != 0) {
         return -result;
     } else {
-        return atoi(output);
+        int res = *((int *)output);
+        return res;
     }
 }
 
@@ -193,7 +195,8 @@ int wasi_ext_event_source_fd(uint32_t event_mask) {
     if (err != 0) {
         return -err;
     }
-    return atoi(output);
+    int res = *((int *)output);
+    return res;
 }
 
 int wasi_ext_attach_sigint(int32_t fd) {
@@ -203,11 +206,7 @@ int wasi_ext_attach_sigint(int32_t fd) {
     char *serialized = json_stringify(0, root, " ");
     json_delete(root);
 
-    const size_t output_len = 16;
-    char output[output_len];
-
-    int err =
-        __syscall("attach_sigint", serialized, (uint8_t *)output, output_len);
+    int err = __syscall("attach_sigint", serialized, NULL, 0);
     free(serialized);
     return -err;
 }
@@ -221,7 +220,8 @@ int wasi_ext_clean_inodes() {
 
 int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
                    const struct Env *env, size_t n_env, int background,
-                   const struct Redirect *redirects, size_t n_redirects) {
+                   const struct Redirect *redirects, size_t n_redirects,
+                   int *child_pid) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "path", json_mkstring(path));
 
@@ -248,11 +248,13 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
     char *call_args = json_stringify(0, root, " ");
     json_delete(root);
 
-    const size_t output_len = 4;
+    const size_t output_len = 8;
     char buf[output_len];
     int result = __syscall("spawn", call_args, (uint8_t *)buf, output_len);
     free(call_args);
-    int status = atoi(buf);
+    int *data_ptr = (int *)buf;
+    int status = data_ptr[0];
+    *child_pid = data_ptr[1];
     if (status != 0)
         return -status;
     else
