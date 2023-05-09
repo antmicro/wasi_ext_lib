@@ -263,7 +263,6 @@ pub fn spawn(
             .map(CStringRedirect::from)
             .collect::<Vec<CStringRedirect>>();
 
-
         wasi_ext_lib_generated::wasi_ext_spawn(
             CString::new(path).unwrap().as_c_str().as_ptr(),
             cstring_args
@@ -289,7 +288,6 @@ pub fn spawn(
                 .as_ptr(),
             cstring_redirects.len(),
             &mut child_pid,
-
         )
     };
     if syscall_result < 0 {
