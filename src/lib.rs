@@ -9,10 +9,9 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::CString;
+use std::ffi::{CString, c_ulong, c_void};
 use std::fs;
 use std::os::wasi::ffi::OsStrExt;
-#[cfg(feature = "hterm")]
 use std::os::wasi::prelude::RawFd;
 use std::path::Path;
 use std::ptr;
@@ -299,6 +298,26 @@ pub fn spawn(
 
 pub fn kill(pid: Pid, signal: wasi::Signal) -> Result<(), ExitCode> {
     let result = unsafe { wasi_ext_lib_generated::wasi_ext_kill(pid, signal.raw() as i32) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn ioctl<T>(fd: RawFd, command: c_ulong, arg: Option<&mut T>) -> Result<(), ExitCode> {
+    let result = if let Some(arg) = arg {
+        unsafe {
+            let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, arg_ptr)
+        }
+    } else {
+        unsafe {
+            let null_ptr = ptr::null_mut::<T>() as *mut c_void;
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, null_ptr)
+        }
+    };
+
     if result < 0 {
         Err(-result)
     } else {

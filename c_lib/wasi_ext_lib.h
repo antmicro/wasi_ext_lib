@@ -46,5 +46,6 @@ int wasi_ext_spawn(const char *, const char *const *, size_t,
                    const struct Env *, size_t, int, const struct Redirect *,
                    size_t n_redirects, int *);
 int wasi_ext_kill(int, int);
+int wasi_ext_ioctl(int, unsigned long, void*);
 
 #endif
