@@ -11,6 +11,7 @@ use std::convert::From;
 use std::env;
 use std::ffi::{CString, c_ulong, c_void};
 use std::fs;
+use std::mem;
 use std::os::wasi::ffi::OsStrExt;
 use std::os::wasi::prelude::RawFd;
 use std::path::Path;
@@ -309,12 +310,12 @@ pub fn ioctl<T>(fd: RawFd, command: c_ulong, arg: Option<&mut T>) -> Result<(), 
     let result = if let Some(arg) = arg {
         unsafe {
             let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, arg_ptr)
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, mem::size_of::<T>(), arg_ptr)
         }
     } else {
         unsafe {
             let null_ptr = ptr::null_mut::<T>() as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, null_ptr)
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, 0, null_ptr)
         }
     };
 
