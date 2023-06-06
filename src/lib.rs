@@ -310,12 +310,12 @@ pub fn ioctl<T>(fd: RawFd, command: c_ulong, arg: Option<&mut T>) -> Result<(), 
     let result = if let Some(arg) = arg {
         unsafe {
             let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, mem::size_of::<T>(), arg_ptr)
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, arg_ptr, mem::size_of::<T>())
         }
     } else {
         unsafe {
             let null_ptr = ptr::null_mut::<T>() as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, 0, null_ptr)
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, null_ptr, 0)
         }
     };
 
