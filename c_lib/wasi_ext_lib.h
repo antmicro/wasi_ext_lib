@@ -21,6 +21,11 @@ struct Env {
 };
 
 #ifdef HTERM
+// Ioctl magic numbers
+const uint64_t GET_SCREEN_SIZE = 0;
+const uint64_t SET_RAW = 1;
+const uint64_t SET_ECHO = 2;
+
 typedef uint32_t WasiEvents;
 const size_t WASI_EVENTS_NUM = 2;
 const size_t WASI_EVENTS_MASK_SIZE = 4; // number of bytes

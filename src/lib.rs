@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::{CString, c_ulong, c_void};
+use std::ffi::{c_ulong, c_void, CString};
 use std::fs;
 use std::mem;
 use std::os::wasi::ffi::OsStrExt;
@@ -33,6 +33,13 @@ pub enum Redirect<'a> {
     Read((wasi::Fd, &'a str)),
     Write((wasi::Fd, &'a str)),
     Append((wasi::Fd, &'a str)),
+}
+
+#[repr(u64)]
+pub enum IoctlNum {
+    GetScreenSize = wasi_ext_lib_generated::GET_SCREEN_SIZE,
+    SetRaw = wasi_ext_lib_generated::SET_RAW,
+    SetEcho = wasi_ext_lib_generated::SET_ECHO,
 }
 
 enum CStringRedirect {
@@ -306,16 +313,21 @@ pub fn kill(pid: Pid, signal: wasi::Signal) -> Result<(), ExitCode> {
     }
 }
 
-pub fn ioctl<T>(fd: RawFd, command: c_ulong, arg: Option<&mut T>) -> Result<(), ExitCode> {
+pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(), ExitCode> {
     let result = if let Some(arg) = arg {
         unsafe {
             let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, arg_ptr, mem::size_of::<T>())
+            wasi_ext_lib_generated::wasi_ext_ioctl(
+                fd,
+                command as c_ulong,
+                arg_ptr,
+                mem::size_of::<T>(),
+            )
         }
     } else {
         unsafe {
             let null_ptr = ptr::null_mut::<T>() as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command, null_ptr, 0)
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command as c_ulong, null_ptr, 0)
         }
     };
 

@@ -282,13 +282,11 @@ int wasi_ext_ioctl(int fd, unsigned long cmd, void *arg, size_t arg_size) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "fd", json_mknumber(fd));
     json_append_member(root, "cmd", json_mknumber(cmd));
-    json_append_member(root, "arg_ptr", json_mkstring(ptr));
-    json_append_member(root, "arg_size", json_mknumber(arg_size));
 
     char *serialized = json_stringify(0, root, " ");
     json_delete(root);
 
-    int err = __syscall("ioctl", serialized, NULL, 0);
+    int err = __syscall("ioctl", serialized, arg, arg_size);
 
     free(ptr);
     free(serialized);
