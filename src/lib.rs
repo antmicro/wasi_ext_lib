@@ -63,6 +63,11 @@ impl From<Redirect<'_>> for CStringRedirect {
     }
 }
 
+pub enum FcntlCommand {
+    // like F_DUPFD but it move fd insted of duplicating
+    F_MVFD { min_fd_num: RawFd },
+}
+
 unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirect {
     match r {
         CStringRedirect::Read((fd, path)) => wasi_ext_lib_generated::Redirect {
@@ -289,5 +294,29 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
         Err(-result)
     } else {
         Ok(())
+    }
+}
+pub fn fcntl(fd: RawFd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
+    match cmd {
+        FcntlCommand::F_MVFD { min_fd_num } => {
+            // Find free fd number not lower than min_fd_num
+            let mut dst_fd: i32 = min_fd_num;
+            loop {
+                let result = unsafe { wasi::fd_fdstat_get(dst_fd as u32) };
+                if let Err(wasi::ERRNO_BADF) = result {
+                    break;
+                } else if let Err(err) = result {
+                    return Err(err.raw() as ExitCode);
+                }
+                dst_fd += 1;
+            }
+
+            // Move fd
+            if let Err(err) = unsafe { wasi::fd_renumber(fd as u32, dst_fd as u32) } {
+                Err(err.raw() as ExitCode)
+            } else {
+                Ok(dst_fd)
+            }
+        },
     }
 }
