@@ -1,6 +1,6 @@
 name: build library
 
-on: push
+on: [push, pull_request]
 
 jobs:
   build-library:
@@ -62,7 +62,7 @@ jobs:
           cd rust
           git apply ../canonicalize.patch
           ./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --enable-lld --tools=cargo
-          ./x.py build --target wasm32-wasi --target x86_64-unknown-linux-gnu --stage 1
+          ./x.py build --target wasm32-wasi,x86_64-unknown-linux-gnu --stage 1
           source $HOME/.cargo/env
           rustup toolchain link wasi_extended "$(pwd)/build/host/stage1"
           cargo --version
