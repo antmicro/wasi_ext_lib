@@ -19,6 +19,7 @@ use std::ptr;
 use std::str;
 
 mod wasi_ext_lib_generated;
+
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
     WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
@@ -169,48 +170,6 @@ pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
     match unsafe { wasi_ext_lib_generated::wasi_ext_set_echo(should_echo as i32) } {
         0 => Ok(()),
         e => Err(e),
-    }
-}
-
-#[cfg(feature = "hterm")]
-pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode> {
-    match val {
-        Some(value) => {
-            match unsafe {
-                wasi_ext_lib_generated::wasi_ext_hterm_set(
-                    CString::new(attrib).unwrap().as_c_str().as_ptr() as *const i8,
-                    CString::new(value).unwrap().as_c_str().as_ptr() as *const i8,
-                )
-            } {
-                0 => Ok(None),
-                e => Err(e),
-            }
-        }
-        None => {
-            const OUTPUT_LEN: usize = 256;
-            let mut buf = [0u8; OUTPUT_LEN];
-            match unsafe {
-                wasi_ext_lib_generated::wasi_ext_hterm_get(
-                    CString::new(attrib).unwrap().as_c_str().as_ptr() as *const i8,
-                    buf.as_mut_ptr() as *mut i8,
-                    OUTPUT_LEN,
-                )
-            } {
-                0 => Ok(Some(
-                    str::from_utf8(
-                        &buf[..match buf.iter().position(|&i| i == 0) {
-                            Some(x) => x,
-                            None => {
-                                return Err(wasi::ERRNO_ILSEQ.raw().into());
-                            }
-                        }],
-                    )
-                    .expect("Could not read syscall output")
-                    .to_string(),
-                )),
-                e => Err(e),
-            }
-        }
     }
 }
 

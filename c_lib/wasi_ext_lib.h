@@ -20,12 +20,12 @@ struct Env {
     const char *val;
 };
 
-#ifdef HTERM
 // Ioctl magic numbers
 const uint64_t GET_SCREEN_SIZE = 0;
 const uint64_t SET_RAW = 1;
 const uint64_t SET_ECHO = 2;
 
+#ifdef HTERM
 typedef uint32_t WasiEvents;
 const size_t WASI_EVENTS_NUM = 2;
 const size_t WASI_EVENTS_MASK_SIZE = 4; // number of bytes
@@ -41,8 +41,6 @@ int wasi_ext_set_env(const char *, const char *);
 int wasi_ext_getpid();
 int wasi_ext_set_echo(int);
 #ifdef HTERM
-int wasi_ext_hterm_get(const char *, char *, size_t);
-int wasi_ext_hterm_set(const char *, const char *);
 int wasi_ext_event_source_fd(uint32_t);
 int wasi_ext_attach_sigint(int32_t);
 #endif

@@ -152,33 +152,6 @@ int wasi_ext_set_echo(int should_echo) {
 }
 
 #ifdef HTERM
-int wasi_ext_hterm_set(const char *attrib, const char *val) {
-    JsonNode *root = json_mkobject();
-    json_append_member(root, "method", json_mkstring("set"));
-    json_append_member(root, "attrib", json_mkstring(attrib));
-    json_append_member(root, "val", json_mkstring(val));
-
-    char *serialized = json_stringify(0, root, " ");
-    json_delete(root);
-
-    int err = __syscall("hterm", serialized, NULL, 0);
-    free(serialized);
-    return err;
-}
-
-int wasi_ext_hterm_get(const char *attrib, char *val, size_t val_len) {
-    JsonNode *root = json_mkobject();
-    json_append_member(root, "method", json_mkstring("get"));
-    json_append_member(root, "attrib", json_mkstring(attrib));
-
-    char *serialized = json_stringify(0, root, " ");
-    json_delete(root);
-
-    int err = __syscall("hterm", serialized, (uint8_t *)val, val_len);
-    free(serialized);
-    return err;
-}
-
 int wasi_ext_event_source_fd(uint32_t event_mask) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "event_mask", json_mknumber(event_mask));
