@@ -6,7 +6,22 @@
 #ifndef c_bindings_wasi_ext_lib_h_INCLUDED
 #define c_bindings_wasi_ext_lib_h_INCLUDED
 
+#define _IOC_NONE 0U
+#define _IOC_WRITE 1U
+#define _IOC_READ 2U
+
+#define _IOC(rw, maj, func, size) (rw << 30 | size << 16 | maj << 8 | func)
+#define _IO(maj, func) _IOC(_IOC_NONE, maj, func, 0)
+#define _IOW(maj, func, size) _IOC(_IOC_WRITE, maj, func, size)
+#define _IOR(maj, func, size) _IOC(_IOC_READ, maj, func, size)
+#define _IOWR(maj, func, size) _IOC(_IOC_WRITE | _IOC_READ, maj, func, size)
+
 #include <stdlib.h>
+
+// Ioctl magic numbers
+const unsigned int TIOCGWINSZ = _IOR(1, 0, 8);
+const unsigned int TIOCSRAW = _IOW(1, 1, 4);
+const unsigned int TIOCSECHO = _IOW(1, 2, 4);
 
 enum RedirectType { READ, WRITE, APPEND };
 
@@ -19,11 +34,6 @@ struct Env {
     const char *attrib;
     const char *val;
 };
-
-// Ioctl magic numbers
-const uint64_t GET_SCREEN_SIZE = 0;
-const uint64_t SET_RAW = 1;
-const uint64_t SET_ECHO = 2;
 
 #ifdef HTERM
 typedef uint32_t WasiEvents;
@@ -49,6 +59,6 @@ int wasi_ext_spawn(const char *, const char *const *, size_t,
                    const struct Env *, size_t, int, const struct Redirect *,
                    size_t n_redirects, int *);
 int wasi_ext_kill(int, int);
-int wasi_ext_ioctl(int, unsigned long, void *, size_t);
+int wasi_ext_ioctl(int, unsigned int, void *);
 
 #endif

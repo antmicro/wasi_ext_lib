@@ -9,9 +9,8 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::{c_ulong, c_void, CString};
+use std::ffi::{c_uint, c_void, CString};
 use std::fs;
-use std::mem;
 use std::os::wasi::ffi::OsStrExt;
 use std::os::wasi::prelude::RawFd;
 use std::path::Path;
@@ -22,7 +21,8 @@ mod wasi_ext_lib_generated;
 
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
-    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
+    WasiEvents, TIOCGWINSZ, TIOCSECHO, TIOCSRAW, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM,
+    WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
 };
 
 pub use wasi::SIGNAL_KILL;
@@ -36,11 +36,11 @@ pub enum Redirect<'a> {
     Append((wasi::Fd, &'a str)),
 }
 
-#[repr(u64)]
+#[repr(u32)]
 pub enum IoctlNum {
-    GetScreenSize = wasi_ext_lib_generated::GET_SCREEN_SIZE,
-    SetRaw = wasi_ext_lib_generated::SET_RAW,
-    SetEcho = wasi_ext_lib_generated::SET_ECHO,
+    GetScreenSize = wasi_ext_lib_generated::TIOCGWINSZ,
+    SetRaw = wasi_ext_lib_generated::TIOCSRAW,
+    SetEcho = wasi_ext_lib_generated::TIOCSECHO,
 }
 
 enum CStringRedirect {
@@ -276,17 +276,12 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
     let result = if let Some(arg) = arg {
         unsafe {
             let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(
-                fd,
-                command as c_ulong,
-                arg_ptr,
-                mem::size_of::<T>(),
-            )
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command as c_uint, arg_ptr)
         }
     } else {
         unsafe {
             let null_ptr = ptr::null_mut::<T>() as *mut c_void;
-            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command as c_ulong, null_ptr, 0)
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command as c_uint, null_ptr)
         }
     };
 

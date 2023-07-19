@@ -248,10 +248,7 @@ int wasi_ext_kill(int pid, int sig) {
     return -err;
 }
 
-int wasi_ext_ioctl(int fd, unsigned long cmd, void *arg, size_t arg_size) {
-    char *ptr;
-    asprintf(&ptr, "%p", arg);
-
+int wasi_ext_ioctl(int fd, unsigned int cmd, void *arg) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "fd", json_mknumber(fd));
     json_append_member(root, "cmd", json_mknumber(cmd));
@@ -259,9 +256,8 @@ int wasi_ext_ioctl(int fd, unsigned long cmd, void *arg, size_t arg_size) {
     char *serialized = json_stringify(0, root, " ");
     json_delete(root);
 
-    int err = __syscall("ioctl", serialized, arg, arg_size);
+    int err = __syscall("ioctl", serialized, arg, 0);
 
-    free(ptr);
     free(serialized);
 
     return -err;
