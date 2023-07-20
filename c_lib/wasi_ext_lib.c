@@ -256,7 +256,7 @@ int wasi_ext_ioctl(int fd, unsigned int cmd, void *arg) {
     char *serialized = json_stringify(0, root, " ");
     json_delete(root);
 
-    int err = __syscall("ioctl", serialized, arg, 0);
+    int err = __syscall("ioctl", serialized, arg, _IOGS(cmd));
 
     free(serialized);
 

@@ -10,11 +10,28 @@
 #define _IOC_WRITE 1U
 #define _IOC_READ 2U
 
-#define _IOC(rw, maj, func, size) (rw << 30 | size << 16 | maj << 8 | func)
+#define _IORW_OFF 30
+#define _IOS_OFF 16
+#define _IOM_OFF 8
+#define _IOF_OFF 0
+
+#define _IORW_MASK 0xc0000000
+#define _IOS_MASK 0x3fff0000
+#define _IOM_MASK 0x0000ff00
+#define _IOF_MASK 0x000000ff
+
+#define _IOC(rw, maj, func, size)                                              \
+    (rw << _IORW_OFF | size << _IOS_OFF | maj << _IOM_OFF | func << _IOF_OFF)
+
 #define _IO(maj, func) _IOC(_IOC_NONE, maj, func, 0)
 #define _IOW(maj, func, size) _IOC(_IOC_WRITE, maj, func, size)
 #define _IOR(maj, func, size) _IOC(_IOC_READ, maj, func, size)
 #define _IOWR(maj, func, size) _IOC(_IOC_WRITE | _IOC_READ, maj, func, size)
+
+#define _IOGRW(mn) ((mn & _IORW_MASK) >> _IORW_OFF)
+#define _IOGS(mn) ((mn & _IOS_MASK) >> _IOS_OFF)
+#define _IOGM(mn) ((mn & _IOM_MASK) >> _IOM_OFF)
+#define _IOGF(mn) ((mn & _IOF_MASK) >> _IOF_OFF)
 
 #include <stdlib.h>
 
