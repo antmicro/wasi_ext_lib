@@ -11,8 +11,8 @@ use std::convert::From;
 use std::env;
 use std::ffi::{c_uint, c_void, CString};
 use std::fs;
+use std::os::fd::RawFd;
 use std::os::wasi::ffi::OsStrExt;
-use std::os::wasi::prelude::RawFd;
 use std::path::Path;
 use std::ptr;
 use std::str;
@@ -65,7 +65,7 @@ impl From<Redirect<'_>> for CStringRedirect {
 
 pub enum FcntlCommand {
     // like F_DUPFD but it move fd insted of duplicating
-    F_MVFD { min_fd_num: RawFd },
+    F_MVFD { min_fd_num: wasi::Fd },
 }
 
 unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirect {
@@ -296,13 +296,13 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
         Ok(())
     }
 }
-pub fn fcntl(fd: RawFd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
+pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
     match cmd {
         FcntlCommand::F_MVFD { min_fd_num } => {
             // Find free fd number not lower than min_fd_num
-            let mut dst_fd: i32 = min_fd_num;
+            let mut dst_fd = min_fd_num;
             loop {
-                let result = unsafe { wasi::fd_fdstat_get(dst_fd as u32) };
+                let result = unsafe { wasi::fd_fdstat_get(dst_fd) };
                 if let Err(wasi::ERRNO_BADF) = result {
                     break;
                 } else if let Err(err) = result {
@@ -311,12 +311,17 @@ pub fn fcntl(fd: RawFd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
                 dst_fd += 1;
             }
 
-            // Move fd
-            if let Err(err) = unsafe { wasi::fd_renumber(fd as u32, dst_fd as u32) } {
-                Err(err.raw() as ExitCode)
-            } else {
-                Ok(dst_fd)
+            // Duplicate fd
+            if let Err(err) = unsafe { wasi::fd_renumber(fd, dst_fd) } {
+                return Err(err.raw() as ExitCode)
             }
+
+            // Close fd
+            if let Err(err) = unsafe { wasi::fd_close(fd) } {
+                return Err(err.raw() as ExitCode)
+            }
+
+            Ok(dst_fd as i32)
         },
     }
 }
