@@ -47,6 +47,7 @@ struct Redirect {
     const char *path;
     enum RedirectType type;
 };
+
 struct Env {
     const char *attrib;
     const char *val;
@@ -73,8 +74,8 @@ int wasi_ext_attach_sigint(int32_t);
 #endif
 int wasi_ext_clean_inodes();
 int wasi_ext_spawn(const char *, const char *const *, size_t,
-                   const struct Env *, size_t, int, const struct Redirect *,
-                   size_t n_redirects, int *);
+                   const struct Env *, size_t, int, const void *,
+                   size_t, int *);
 int wasi_ext_kill(int, int);
 int wasi_ext_ioctl(int, unsigned int, void *);
 

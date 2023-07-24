@@ -16,6 +16,7 @@ use std::os::wasi::ffi::OsStrExt;
 use std::path::Path;
 use std::ptr;
 use std::str;
+use std::mem;
 
 mod wasi_ext_lib_generated;
 
@@ -34,6 +35,11 @@ pub enum Redirect<'a> {
     Read((wasi::Fd, &'a str)),
     Write((wasi::Fd, &'a str)),
     Append((wasi::Fd, &'a str)),
+    ReadWrite((wasi::Fd, &'a str)),
+    PipeIn(wasi::Fd),
+    PipeOut(wasi::Fd),
+    Duplicate { fd_src: wasi::Fd, fd_dst: wasi::Fd },
+    Close(wasi::Fd),
 }
 
 #[repr(u32)]
@@ -43,22 +49,88 @@ pub enum IoctlNum {
     SetEcho = wasi_ext_lib_generated::TIOCSECHO,
 }
 
-enum CStringRedirect {
-    Read((wasi::Fd, CString)),
-    Write((wasi::Fd, CString)),
-    Append((wasi::Fd, CString)),
+const REDIREDT_TAG_READ: u8 = 0x1;
+const REDIREDT_TAG_WRITE: u8 = 0x2;
+const REDIREDT_TAG_APPEND: u8 = 0x3;
+const REDIREDT_TAG_READWRITE: u8 = 0x4;
+const REDIREDT_TAG_PIPEIN: u8 = 0x5;
+const REDIREDT_TAG_PIPEOUT: u8 = 0x6;
+const REDIREDT_TAG_DUPLICATE: u8 = 0x7;
+const REDIREDT_TAG_CLOSE: u8 = 0x8;
+
+type PathData = (*const u8, usize);
+/*
+Data type size and alignment, printed by: `cargo +nightly rustc --target wasm32-wasi -- -Zprint-type-sizes`
+type: `RedirectDataU`: 8 bytes, alignment: 4 bytes
+    variant `RedirectDataU`: 8 bytes
+        field `.fd_src`: 4 bytes
+        field `.path`: 8 bytes, offset: 0 bytes, alignment: 4 bytes
+*/
+union RedirectDataU {
+    pub path: PathData,
+    pub fd_src: u32,
 }
 
-impl From<Redirect<'_>> for CStringRedirect {
+/*
+Data type size and alignment, printed by: `cargo +nightly rustc --target wasm32-wasi -- -Zprint-type-sizes`
+type: `InternalRedirect`: 16 bytes, alignment: 4 bytes
+    field `.data`: 8 bytes
+    field `.fd`: 4 bytes
+    field `.tag`: 1 bytes
+    end padding: 3 bytes
+*/
+struct InternalRedirect {
+    data: RedirectDataU,
+    fd: wasi::Fd,
+    tag: u8,
+}
+
+impl From<Redirect<'_>> for InternalRedirect {
     fn from(redirect: Redirect) -> Self {
         match redirect {
-            Redirect::Read((fd, path)) => CStringRedirect::Read((fd, CString::new(path).unwrap())),
-            Redirect::Write((fd, path)) => {
-                CStringRedirect::Write((fd, CString::new(path).unwrap()))
+            Redirect::Read((fd, path)) |
+            Redirect::Write((fd, path)) |
+            Redirect::Append((fd, path)) |
+            Redirect::ReadWrite((fd, path)) => {
+                let tag = match redirect {
+                    Redirect::Read((fd, path)) => REDIREDT_TAG_READ,
+                    Redirect::Write((fd, path)) => REDIREDT_TAG_WRITE,
+                    Redirect::Append((fd, path)) => REDIREDT_TAG_APPEND,
+                    Redirect::ReadWrite((fd, path)) => REDIREDT_TAG_READWRITE,
+                    _ => unreachable!()
+                };
+
+                InternalRedirect {
+                    data: RedirectDataU {
+                        path: (
+                            path.as_ptr(),
+                            path.len(),
+                        )
+                    },
+                    fd,
+                    tag,
+                }
             }
-            Redirect::Append((fd, path)) => {
-                CStringRedirect::Append((fd, CString::new(path).unwrap()))
-            }
+            Redirect::PipeIn(fd_src) => InternalRedirect {
+                data: RedirectDataU { fd_src },
+                fd: 0, //TODO: pass it by constant
+                tag: REDIREDT_TAG_PIPEIN,
+            },
+            Redirect::PipeOut(fd_src) => InternalRedirect {
+                data: RedirectDataU { fd_src },
+                fd: 1, //TODO: pass it by constant
+                tag: REDIREDT_TAG_PIPEOUT,
+            },
+            Redirect::Duplicate { fd_src, fd_dst } => InternalRedirect {
+                data: RedirectDataU { fd_src },
+                fd: fd_dst,
+                tag: REDIREDT_TAG_DUPLICATE,
+            },
+            Redirect::Close(fd_dst) => InternalRedirect {
+                data: unsafe { mem::zeroed() }, // ignore field in kernel
+                fd: fd_dst,
+                tag: REDIREDT_TAG_DUPLICATE,
+            },
         }
     }
 }
@@ -66,26 +138,6 @@ impl From<Redirect<'_>> for CStringRedirect {
 pub enum FcntlCommand {
     // like F_DUPFD but it move fd insted of duplicating
     F_MVFD { min_fd_num: wasi::Fd },
-}
-
-unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirect {
-    match r {
-        CStringRedirect::Read((fd, path)) => wasi_ext_lib_generated::Redirect {
-            type_: wasi_ext_lib_generated::RedirectType_READ,
-            path: path.as_c_str().as_ptr(),
-            fd: *fd as i32,
-        },
-        CStringRedirect::Write((fd, path)) => wasi_ext_lib_generated::Redirect {
-            type_: wasi_ext_lib_generated::RedirectType_WRITE,
-            path: path.as_c_str().as_ptr(),
-            fd: *fd as i32,
-        },
-        CStringRedirect::Append((fd, path)) => wasi_ext_lib_generated::Redirect {
-            type_: wasi_ext_lib_generated::RedirectType_APPEND,
-            path: path.as_c_str().as_ptr(),
-            fd: *fd as i32,
-        },
-    }
 }
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
@@ -228,12 +280,13 @@ pub fn spawn(
                 )
             })
             .collect::<Vec<(CString, CString)>>();
-
-        let cstring_redirects = redirects
+        let redirects_len = redirects.len();
+        let redirects_ptr = redirects
             .into_iter()
-            .map(CStringRedirect::from)
-            .collect::<Vec<CStringRedirect>>();
-
+            .map(InternalRedirect::from)
+            .collect::<Vec<InternalRedirect>>()
+            .as_ptr();
+        eprintln!("{:#?}", redirects_ptr);
         wasi_ext_lib_generated::wasi_ext_spawn(
             CString::new(path).unwrap().as_c_str().as_ptr(),
             cstring_args
@@ -252,12 +305,8 @@ pub fn spawn(
                 .as_ptr(),
             env.len(),
             background as i32,
-            cstring_redirects
-                .iter()
-                .map(|red| get_c_redirect(red))
-                .collect::<Vec<wasi_ext_lib_generated::Redirect>>()
-                .as_ptr(),
-            cstring_redirects.len(),
+            redirects_ptr as *const c_void,
+            redirects_len,
             &mut child_pid,
         )
     };

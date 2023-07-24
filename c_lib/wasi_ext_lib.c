@@ -19,24 +19,6 @@
 #define SYSCALL_LENGTH 256
 #define SYSCALL_ARGS_LENGTH 2048
 
-JsonNode *json_mkredirect(struct Redirect redir) {
-    JsonNode *node = json_mkobject();
-    json_append_member(node, "fd", json_mknumber((double)redir.fd));
-    json_append_member(node, "path", json_mkstring(redir.path));
-    switch (redir.type) {
-    case READ:
-        json_append_member(node, "mode", json_mkstring("read"));
-        break;
-    case WRITE:
-        json_append_member(node, "mode", json_mkstring("write"));
-        break;
-    case APPEND:
-        json_append_member(node, "mode", json_mkstring("append"));
-        break;
-    }
-    return node;
-}
-
 int __syscall(const char *command, char *args, uint8_t *output_buf,
               size_t output_buf_len) {
     char *ptr;
@@ -193,7 +175,7 @@ int wasi_ext_clean_inodes() {
 
 int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
                    const struct Env *env, size_t n_env, int background,
-                   const struct Redirect *redirects, size_t n_redirects,
+                   const void *redirects, size_t n_redirects,
                    int *child_pid) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "path", json_mkstring(path));
@@ -212,11 +194,11 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
 
     json_append_member(root, "background", json_mkbool((bool)background));
 
-    JsonNode *_redirects = json_mkarray();
-    for (size_t i = 0; i < n_redirects; i++) {
-        json_append_element(_redirects, json_mkredirect(redirects[i]));
-    }
-    json_append_member(root, "redirects", _redirects);
+    char *redirects_ptr;
+    asprintf(&redirects_ptr, "%p", redirects);
+    json_append_member(root, "redirects_ptr", json_mkstring(redirects_ptr));
+
+    json_append_member(root, "n_redirects", json_mknumber((double)n_redirects));
 
     char *call_args = json_stringify(0, root, " ");
     json_delete(root);
@@ -224,6 +206,7 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
     const size_t output_len = 8;
     char buf[output_len];
     int result = __syscall("spawn", call_args, (uint8_t *)buf, output_len);
+    free(redirects_ptr);
     free(call_args);
     int *data_ptr = (int *)buf;
     int status = data_ptr[0];
