@@ -175,7 +175,7 @@ int wasi_ext_clean_inodes() {
 
 int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
                    const struct Env *env, size_t n_env, int background,
-                   const void *redirects, size_t n_redirects,
+                   const struct Redirect *redirects, size_t n_redirects,
                    int *child_pid) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "path", json_mkstring(path));
@@ -194,9 +194,7 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
 
     json_append_member(root, "background", json_mkbool((bool)background));
 
-    char *redirects_ptr;
-    asprintf(&redirects_ptr, "%p", redirects);
-    json_append_member(root, "redirects_ptr", json_mkstring(redirects_ptr));
+    json_append_member(root, "redirects_ptr", json_mknumber((double)((size_t) redirects)));
 
     json_append_member(root, "n_redirects", json_mknumber((double)n_redirects));
 
@@ -206,7 +204,6 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
     const size_t output_len = 8;
     char buf[output_len];
     int result = __syscall("spawn", call_args, (uint8_t *)buf, output_len);
-    free(redirects_ptr);
     free(call_args);
     int *data_ptr = (int *)buf;
     int status = data_ptr[0];

@@ -19,6 +19,17 @@ use std::str;
 use std::mem;
 
 mod wasi_ext_lib_generated;
+pub use wasi_ext_lib_generated:: {
+    RedirectType, Redirect_Data, Redirect_Data_Path,
+    RedirectType_READ,
+    RedirectType_WRITE,
+    RedirectType_APPEND,
+    RedirectType_READWRITE,
+    RedirectType_PIPEIN,
+    RedirectType_PIPEOUT,
+    RedirectType_DUPLICATE,
+    RedirectType_CLOSE,
+};
 
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
@@ -49,43 +60,7 @@ pub enum IoctlNum {
     SetEcho = wasi_ext_lib_generated::TIOCSECHO,
 }
 
-const REDIREDT_TAG_READ: u8 = 0x1;
-const REDIREDT_TAG_WRITE: u8 = 0x2;
-const REDIREDT_TAG_APPEND: u8 = 0x3;
-const REDIREDT_TAG_READWRITE: u8 = 0x4;
-const REDIREDT_TAG_PIPEIN: u8 = 0x5;
-const REDIREDT_TAG_PIPEOUT: u8 = 0x6;
-const REDIREDT_TAG_DUPLICATE: u8 = 0x7;
-const REDIREDT_TAG_CLOSE: u8 = 0x8;
-
-type PathData = (*const u8, usize);
-/*
-Data type size and alignment, printed by: `cargo +nightly rustc --target wasm32-wasi -- -Zprint-type-sizes`
-type: `RedirectDataU`: 8 bytes, alignment: 4 bytes
-    variant `RedirectDataU`: 8 bytes
-        field `.fd_src`: 4 bytes
-        field `.path`: 8 bytes, offset: 0 bytes, alignment: 4 bytes
-*/
-union RedirectDataU {
-    pub path: PathData,
-    pub fd_src: u32,
-}
-
-/*
-Data type size and alignment, printed by: `cargo +nightly rustc --target wasm32-wasi -- -Zprint-type-sizes`
-type: `InternalRedirect`: 16 bytes, alignment: 4 bytes
-    field `.data`: 8 bytes
-    field `.fd`: 4 bytes
-    field `.tag`: 1 bytes
-    end padding: 3 bytes
-*/
-struct InternalRedirect {
-    data: RedirectDataU,
-    fd: wasi::Fd,
-    tag: u8,
-}
-
-impl From<Redirect<'_>> for InternalRedirect {
+impl From<Redirect<'_>> for wasi_ext_lib_generated::Redirect {
     fn from(redirect: Redirect) -> Self {
         match redirect {
             Redirect::Read((fd, path)) |
@@ -93,43 +68,43 @@ impl From<Redirect<'_>> for InternalRedirect {
             Redirect::Append((fd, path)) |
             Redirect::ReadWrite((fd, path)) => {
                 let tag = match redirect {
-                    Redirect::Read((fd, path)) => REDIREDT_TAG_READ,
-                    Redirect::Write((fd, path)) => REDIREDT_TAG_WRITE,
-                    Redirect::Append((fd, path)) => REDIREDT_TAG_APPEND,
-                    Redirect::ReadWrite((fd, path)) => REDIREDT_TAG_READWRITE,
+                    Redirect::Read(_) => RedirectType_READ,
+                    Redirect::Write(_) => RedirectType_WRITE,
+                    Redirect::Append(_) => RedirectType_APPEND,
+                    Redirect::ReadWrite(_) => RedirectType_READWRITE,
                     _ => unreachable!()
                 };
 
-                InternalRedirect {
-                    data: RedirectDataU {
-                        path: (
-                            path.as_ptr(),
-                            path.len(),
-                        )
+                wasi_ext_lib_generated::Redirect {
+                    data: Redirect_Data {
+                        path: Redirect_Data_Path {
+                            path_str: path.as_ptr() as *const i8,
+                            path_len: path.len(),
+                        }
                     },
-                    fd,
-                    tag,
+                    fd_dst: fd as i32,
+                    type_: tag,
                 }
             }
-            Redirect::PipeIn(fd_src) => InternalRedirect {
-                data: RedirectDataU { fd_src },
-                fd: 0, //TODO: pass it by constant
-                tag: REDIREDT_TAG_PIPEIN,
+            Redirect::PipeIn(fd_src) => wasi_ext_lib_generated::Redirect {
+                data: Redirect_Data { fd_src: fd_src as i32 },
+                fd_dst: 0, //TODO: pass it by constant
+                type_: RedirectType_PIPEIN,
             },
-            Redirect::PipeOut(fd_src) => InternalRedirect {
-                data: RedirectDataU { fd_src },
-                fd: 1, //TODO: pass it by constant
-                tag: REDIREDT_TAG_PIPEOUT,
+            Redirect::PipeOut(fd_src) => wasi_ext_lib_generated::Redirect {
+                data: Redirect_Data { fd_src: fd_src as i32 },
+                fd_dst: 1, //TODO: pass it by constant
+                type_: RedirectType_PIPEOUT,
             },
-            Redirect::Duplicate { fd_src, fd_dst } => InternalRedirect {
-                data: RedirectDataU { fd_src },
-                fd: fd_dst,
-                tag: REDIREDT_TAG_DUPLICATE,
+            Redirect::Duplicate { fd_src, fd_dst } => wasi_ext_lib_generated::Redirect {
+                data: Redirect_Data { fd_src: fd_src as i32 },
+                fd_dst: fd_dst as i32,
+                type_: RedirectType_DUPLICATE,
             },
-            Redirect::Close(fd_dst) => InternalRedirect {
+            Redirect::Close(fd_dst) => wasi_ext_lib_generated::Redirect {
                 data: unsafe { mem::zeroed() }, // ignore field in kernel
-                fd: fd_dst,
-                tag: REDIREDT_TAG_DUPLICATE,
+                fd_dst: fd_dst as i32,
+                type_: RedirectType_DUPLICATE,
             },
         }
     }
@@ -281,12 +256,10 @@ pub fn spawn(
             })
             .collect::<Vec<(CString, CString)>>();
         let redirects_len = redirects.len();
-        let redirects_ptr = redirects
+        let redirects_vec = redirects
             .into_iter()
-            .map(InternalRedirect::from)
-            .collect::<Vec<InternalRedirect>>()
-            .as_ptr();
-        eprintln!("{:#?}", redirects_ptr);
+            .map(wasi_ext_lib_generated::Redirect::from)
+            .collect::<Vec<wasi_ext_lib_generated::Redirect>>();
         wasi_ext_lib_generated::wasi_ext_spawn(
             CString::new(path).unwrap().as_c_str().as_ptr(),
             cstring_args
@@ -305,7 +278,7 @@ pub fn spawn(
                 .as_ptr(),
             env.len(),
             background as i32,
-            redirects_ptr as *const c_void,
+            redirects_vec.as_ptr(),
             redirects_len,
             &mut child_pid,
         )
