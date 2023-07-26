@@ -42,11 +42,11 @@ pub use wasi::SIGNAL_KILL;
 type ExitCode = i32;
 type Pid = i32;
 
-pub enum Redirect<'a> {
-    Read((wasi::Fd, &'a str)),
-    Write((wasi::Fd, &'a str)),
-    Append((wasi::Fd, &'a str)),
-    ReadWrite((wasi::Fd, &'a str)),
+pub enum Redirect {
+    Read((wasi::Fd, String)),
+    Write((wasi::Fd, String)),
+    Append((wasi::Fd, String)),
+    ReadWrite((wasi::Fd, String)),
     PipeIn(wasi::Fd),
     PipeOut(wasi::Fd),
     Duplicate { fd_src: wasi::Fd, fd_dst: wasi::Fd },
@@ -60,8 +60,8 @@ pub enum IoctlNum {
     SetEcho = wasi_ext_lib_generated::TIOCSECHO,
 }
 
-impl From<Redirect<'_>> for wasi_ext_lib_generated::Redirect {
-    fn from(redirect: Redirect) -> Self {
+impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
+    fn from(redirect: &Redirect) -> Self {
         match redirect {
             Redirect::Read((fd, path)) |
             Redirect::Write((fd, path)) |
@@ -82,28 +82,28 @@ impl From<Redirect<'_>> for wasi_ext_lib_generated::Redirect {
                             path_len: path.len(),
                         }
                     },
-                    fd_dst: fd as i32,
+                    fd_dst: *fd as i32,
                     type_: tag,
                 }
             }
             Redirect::PipeIn(fd_src) => wasi_ext_lib_generated::Redirect {
-                data: Redirect_Data { fd_src: fd_src as i32 },
+                data: Redirect_Data { fd_src: *fd_src as i32 },
                 fd_dst: 0, //TODO: pass it by constant
                 type_: RedirectType_PIPEIN,
             },
             Redirect::PipeOut(fd_src) => wasi_ext_lib_generated::Redirect {
-                data: Redirect_Data { fd_src: fd_src as i32 },
+                data: Redirect_Data { fd_src: *fd_src as i32 },
                 fd_dst: 1, //TODO: pass it by constant
                 type_: RedirectType_PIPEOUT,
             },
             Redirect::Duplicate { fd_src, fd_dst } => wasi_ext_lib_generated::Redirect {
-                data: Redirect_Data { fd_src: fd_src as i32 },
-                fd_dst: fd_dst as i32,
+                data: Redirect_Data { fd_src: *fd_src as i32 },
+                fd_dst: *fd_dst as i32,
                 type_: RedirectType_DUPLICATE,
             },
             Redirect::Close(fd_dst) => wasi_ext_lib_generated::Redirect {
                 data: unsafe { mem::zeroed() }, // ignore field in kernel
-                fd_dst: fd_dst as i32,
+                fd_dst: *fd_dst as i32,
                 type_: RedirectType_DUPLICATE,
             },
         }
@@ -237,7 +237,7 @@ pub fn spawn(
     args: &[&str],
     env: &HashMap<String, String>,
     background: bool,
-    redirects: Vec<Redirect>,
+    redirects: &[Redirect],
 ) -> Result<(ExitCode, Pid), ExitCode> {
     let mut child_pid: Pid = -1;
     let syscall_result = unsafe {
@@ -257,7 +257,7 @@ pub fn spawn(
             .collect::<Vec<(CString, CString)>>();
         let redirects_len = redirects.len();
         let redirects_vec = redirects
-            .into_iter()
+            .iter()
             .map(wasi_ext_lib_generated::Redirect::from)
             .collect::<Vec<wasi_ext_lib_generated::Redirect>>();
         wasi_ext_lib_generated::wasi_ext_spawn(
