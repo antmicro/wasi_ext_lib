@@ -42,11 +42,12 @@ pub use wasi::SIGNAL_KILL;
 type ExitCode = i32;
 type Pid = i32;
 
+#[derive(Debug)]
 pub enum Redirect {
-    Read((wasi::Fd, String)),
-    Write((wasi::Fd, String)),
-    Append((wasi::Fd, String)),
-    ReadWrite((wasi::Fd, String)),
+    Read(wasi::Fd, String),
+    Write(wasi::Fd, String),
+    Append(wasi::Fd, String),
+    ReadWrite(wasi::Fd, String),
     PipeIn(wasi::Fd),
     PipeOut(wasi::Fd),
     Duplicate { fd_src: wasi::Fd, fd_dst: wasi::Fd },
@@ -63,15 +64,15 @@ pub enum IoctlNum {
 impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
     fn from(redirect: &Redirect) -> Self {
         match redirect {
-            Redirect::Read((fd, path)) |
-            Redirect::Write((fd, path)) |
-            Redirect::Append((fd, path)) |
-            Redirect::ReadWrite((fd, path)) => {
+            Redirect::Read(fd, path) |
+            Redirect::Write(fd, path) |
+            Redirect::Append(fd, path) |
+            Redirect::ReadWrite(fd, path) => {
                 let tag = match redirect {
-                    Redirect::Read(_) => RedirectType_READ,
-                    Redirect::Write(_) => RedirectType_WRITE,
-                    Redirect::Append(_) => RedirectType_APPEND,
-                    Redirect::ReadWrite(_) => RedirectType_READWRITE,
+                    Redirect::Read(_, _) => RedirectType_READ,
+                    Redirect::Write(_, _) => RedirectType_WRITE,
+                    Redirect::Append(_, _) => RedirectType_APPEND,
+                    Redirect::ReadWrite(_, _) => RedirectType_READWRITE,
                     _ => unreachable!()
                 };
 
