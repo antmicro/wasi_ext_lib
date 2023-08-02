@@ -42,6 +42,7 @@ jobs:
           source $HOME/.cargo/env
           CLIPPY_OUT=${TMPDIR:-/tmp}/cargo-clippy-log.out
           cargo clippy --target wasm32-wasi --features hterm --quiet 2> ${CLIPPY_OUT}
+          cargo clippy --target wasm32-wasi --quiet 2>> ${CLIPPY_OUT}
           cat ${CLIPPY_OUT}
           if [ -s ${CLIPPY_OUT} ]; then
             echo "There were cargo-clippy warnings. Please fix."

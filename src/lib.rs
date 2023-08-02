@@ -9,19 +9,20 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::CString;
+use std::ffi::{c_uint, c_void, CString};
 use std::fs;
 use std::os::wasi::ffi::OsStrExt;
-#[cfg(feature = "hterm")]
 use std::os::wasi::prelude::RawFd;
 use std::path::Path;
 use std::ptr;
 use std::str;
 
 mod wasi_ext_lib_generated;
+
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
-    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
+    WasiEvents, TIOCGWINSZ, TIOCSECHO, TIOCSRAW, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM,
+    WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
 };
 
 pub use wasi::SIGNAL_KILL;
@@ -33,6 +34,13 @@ pub enum Redirect<'a> {
     Read((wasi::Fd, &'a str)),
     Write((wasi::Fd, &'a str)),
     Append((wasi::Fd, &'a str)),
+}
+
+#[repr(u32)]
+pub enum IoctlNum {
+    GetScreenSize = wasi_ext_lib_generated::TIOCGWINSZ,
+    SetRaw = wasi_ext_lib_generated::TIOCSRAW,
+    SetEcho = wasi_ext_lib_generated::TIOCSECHO,
 }
 
 enum CStringRedirect {
@@ -166,48 +174,6 @@ pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
 }
 
 #[cfg(feature = "hterm")]
-pub fn hterm(attrib: &str, val: Option<&str>) -> Result<Option<String>, ExitCode> {
-    match val {
-        Some(value) => {
-            match unsafe {
-                wasi_ext_lib_generated::wasi_ext_hterm_set(
-                    CString::new(attrib).unwrap().as_c_str().as_ptr() as *const i8,
-                    CString::new(value).unwrap().as_c_str().as_ptr() as *const i8,
-                )
-            } {
-                0 => Ok(None),
-                e => Err(e),
-            }
-        }
-        None => {
-            const OUTPUT_LEN: usize = 256;
-            let mut buf = [0u8; OUTPUT_LEN];
-            match unsafe {
-                wasi_ext_lib_generated::wasi_ext_hterm_get(
-                    CString::new(attrib).unwrap().as_c_str().as_ptr() as *const i8,
-                    buf.as_mut_ptr() as *mut i8,
-                    OUTPUT_LEN,
-                )
-            } {
-                0 => Ok(Some(
-                    str::from_utf8(
-                        &buf[..match buf.iter().position(|&i| i == 0) {
-                            Some(x) => x,
-                            None => {
-                                return Err(wasi::ERRNO_ILSEQ.raw().into());
-                            }
-                        }],
-                    )
-                    .expect("Could not read syscall output")
-                    .to_string(),
-                )),
-                e => Err(e),
-            }
-        }
-    }
-}
-
-#[cfg(feature = "hterm")]
 pub fn event_source_fd(event_mask: WasiEvents) -> Result<RawFd, ExitCode> {
     let result = unsafe { wasi_ext_lib_generated::wasi_ext_event_source_fd(event_mask) };
     if result < 0 {
@@ -299,6 +265,26 @@ pub fn spawn(
 
 pub fn kill(pid: Pid, signal: wasi::Signal) -> Result<(), ExitCode> {
     let result = unsafe { wasi_ext_lib_generated::wasi_ext_kill(pid, signal.raw() as i32) };
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(), ExitCode> {
+    let result = if let Some(arg) = arg {
+        unsafe {
+            let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command as c_uint, arg_ptr)
+        }
+    } else {
+        unsafe {
+            let null_ptr = ptr::null_mut::<T>() as *mut c_void;
+            wasi_ext_lib_generated::wasi_ext_ioctl(fd, command as c_uint, null_ptr)
+        }
+    };
+
     if result < 0 {
         Err(-result)
     } else {

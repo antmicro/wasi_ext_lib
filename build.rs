@@ -32,18 +32,19 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={CLIB_DIR}/wasi_ext_lib.c");
     println!("cargo:rerun-if-changed=src/lib.rs");
-    bindgen::Builder::default()
-        .header(format!("{CLIB_DIR}/wasi_ext_lib.h"))
-        .clang_arg(format!(
-            "--sysroot={}/share/wasi-sysroot",
-            env!("WASI_SDK_PATH")
-        ))
-        .clang_arg("-DHTERM")
-        .clang_arg("-fvisibility=default")
-        .allowlist_file(format!("{CLIB_DIR}/wasi_ext_lib.h"))
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .generate()
-        .expect("Unable to generate bindings")
-        .write_to_file("src/wasi_ext_lib_generated.rs")
-        .expect("could not write bindings");
+    let mut bgen = bindgen::Builder::default().header(format!("{CLIB_DIR}/wasi_ext_lib.h"));
+    if cfg!(feature = "hterm") {
+        bgen = bgen.clang_arg("-DHTERM");
+    }
+    bgen.clang_arg(format!(
+        "--sysroot={}/share/wasi-sysroot",
+        env!("WASI_SDK_PATH")
+    ))
+    .clang_arg("-fvisibility=default")
+    .allowlist_file(format!("{CLIB_DIR}/wasi_ext_lib.h"))
+    .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+    .generate()
+    .expect("Unable to generate bindings")
+    .write_to_file("src/wasi_ext_lib_generated.rs")
+    .expect("could not write bindings");
 }
