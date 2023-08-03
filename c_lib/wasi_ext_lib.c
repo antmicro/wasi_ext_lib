@@ -243,3 +243,42 @@ int wasi_ext_ioctl(int fd, unsigned int cmd, void *arg) {
 
     return -err;
 }
+
+int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
+    __wasi_errno_t err;
+    switch (cmd) {
+    case F_MVFD: {
+        int min_fd = *((int *)arg);
+        __wasi_fdstat_t stat;
+
+        while (true) {
+            err = __wasi_fd_fdstat_get(min_fd, &stat);
+
+            if (__WASI_ERRNO_BADF == err) {
+                break;
+            } else if (__WASI_ERRNO_SUCCESS != err) {
+                return -err;
+            }
+
+            min_fd += 1;
+        }
+
+        // We assume fd_renumber behaves like dup2
+        err = __wasi_fd_renumber(fd, min_fd);
+        if (__WASI_ERRNO_SUCCESS != err) {
+            return -err;
+        }
+
+        err = __wasi_fd_close(fd);
+        if (__WASI_ERRNO_SUCCESS != err) {
+            return -err;
+        }
+        break;
+    }
+    default: {
+        return -EINVAL;
+    }
+    }
+
+    return 0;
+}

@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::{c_uint, c_void, CString};
+use std::ffi::{c_int, c_uint, c_void, CString};
 use std::fs;
 use std::mem;
 use std::os::fd::RawFd;
@@ -19,10 +19,10 @@ use std::ptr;
 use std::str;
 
 mod wasi_ext_lib_generated;
-pub use wasi_ext_lib_generated::{
-    RedirectType, RedirectType_APPEND, RedirectType_CLOSE, RedirectType_DUPLICATE,
-    RedirectType_PIPEIN, RedirectType_PIPEOUT, RedirectType_READ, RedirectType_READWRITE,
-    RedirectType_WRITE, Redirect_Data, Redirect_Data_Path, STDIN, STDOUT,
+use wasi_ext_lib_generated::{
+    RedirectType_APPEND, RedirectType_CLOSE, RedirectType_DUPLICATE, RedirectType_PIPEIN,
+    RedirectType_PIPEOUT, RedirectType_READ, RedirectType_READWRITE, RedirectType_WRITE,
+    Redirect_Data, Redirect_Data_Path, STDIN, STDOUT,
 };
 
 #[cfg(feature = "hterm")]
@@ -105,7 +105,7 @@ impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
             Redirect::Close(fd_dst) => wasi_ext_lib_generated::Redirect {
                 data: unsafe { mem::zeroed() }, // ignore field in kernel
                 fd_dst: *fd_dst as i32,
-                type_: RedirectType_DUPLICATE,
+                type_: RedirectType_CLOSE,
             },
         }
     }
@@ -320,31 +320,19 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
     }
 }
 pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
-    match cmd {
-        FcntlCommand::F_MVFD { min_fd_num } => {
-            // Find free fd number not lower than min_fd_num
-            let mut dst_fd = min_fd_num;
-            loop {
-                let result = unsafe { wasi::fd_fdstat_get(dst_fd) };
-                if let Err(wasi::ERRNO_BADF) = result {
-                    break;
-                } else if let Err(err) = result {
-                    return Err(err.raw() as ExitCode);
-                }
-                dst_fd += 1;
-            }
+    let result = match cmd {
+        FcntlCommand::F_MVFD { min_fd_num } => unsafe {
+            wasi_ext_lib_generated::wasi_ext_fcntl(
+                fd as c_int,
+                wasi_ext_lib_generated::FcntlCommand_F_MVFD,
+                min_fd_num as *mut c_void,
+            )
+        },
+    };
 
-            // Duplicate fd
-            if let Err(err) = unsafe { wasi::fd_renumber(fd, dst_fd) } {
-                return Err(err.raw() as ExitCode);
-            }
-
-            // Close fd
-            if let Err(err) = unsafe { wasi::fd_close(fd) } {
-                return Err(err.raw() as ExitCode);
-            }
-
-            Ok(dst_fd as i32)
-        }
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(result)
     }
 }

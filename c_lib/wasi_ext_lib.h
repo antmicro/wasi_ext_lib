@@ -40,6 +40,9 @@ const unsigned int TIOCGWINSZ = _IOR(1, 0, 8);
 const unsigned int TIOCSRAW = _IOW(1, 1, 4);
 const unsigned int TIOCSECHO = _IOW(1, 2, 4);
 
+// Fnctl commands
+enum FcntlCommand { F_MVFD };
+
 const int STDIN = 0;
 const int STDOUT = 1;
 
@@ -98,5 +101,6 @@ int wasi_ext_spawn(const char *, const char *const *, size_t,
                    size_t, int *);
 int wasi_ext_kill(int, int);
 int wasi_ext_ioctl(int, unsigned int, void *);
+int wasi_ext_fcntl(int, enum FcntlCommand, void *);
 
 #endif
