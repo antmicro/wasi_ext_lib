@@ -194,7 +194,8 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
 
     json_append_member(root, "background", json_mkbool((bool)background));
 
-    json_append_member(root, "redirects_ptr", json_mknumber((double)((size_t) redirects)));
+    json_append_member(root, "redirects_ptr",
+                       json_mknumber((double)((size_t)redirects)));
 
     json_append_member(root, "n_redirects", json_mknumber((double)n_redirects));
 

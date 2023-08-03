@@ -40,7 +40,19 @@ const unsigned int TIOCGWINSZ = _IOR(1, 0, 8);
 const unsigned int TIOCSRAW = _IOW(1, 1, 4);
 const unsigned int TIOCSECHO = _IOW(1, 2, 4);
 
-enum RedirectType { READ, WRITE, APPEND, READWRITE, PIPEIN, PIPEOUT, DUPLICATE, CLOSE };
+const int STDIN = 0;
+const int STDOUT = 1;
+
+enum RedirectType {
+    READ,
+    WRITE,
+    APPEND,
+    READWRITE,
+    PIPEIN,
+    PIPEOUT,
+    DUPLICATE,
+    CLOSE
+};
 
 struct Redirect {
     union Data {
@@ -55,7 +67,6 @@ struct Redirect {
     int fd_dst;
     enum RedirectType type;
 };
-
 
 struct Env {
     const char *attrib;
