@@ -33,6 +33,8 @@
 #define _IOGM(mn) ((mn & _IOM_MASK) >> _IOM_OFF)
 #define _IOGF(mn) ((mn & _IOF_MASK) >> _IOF_OFF)
 
+#define _MAX_FD_NUM 1024
+
 #include <stdlib.h>
 
 // Ioctl magic numbers

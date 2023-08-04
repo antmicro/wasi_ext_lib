@@ -251,7 +251,7 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
         int min_fd = *((int *)arg);
         __wasi_fdstat_t stat;
 
-        while (true) {
+        for (; min_fd < _MAX_FD_NUM; ++min_fd) {
             err = __wasi_fd_fdstat_get(min_fd, &stat);
 
             if (__WASI_ERRNO_BADF == err) {
@@ -259,8 +259,10 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
             } else if (__WASI_ERRNO_SUCCESS != err) {
                 return -err;
             }
+        }
 
-            min_fd += 1;
+        if (min_fd >= _MAX_FD_NUM) {
+            return __WASI_ERRNO_MFILE;
         }
 
         // We assume fd_renumber behaves like dup2
