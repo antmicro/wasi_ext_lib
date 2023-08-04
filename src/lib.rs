@@ -9,15 +9,21 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::{c_uint, c_void, CString};
+use std::ffi::{c_int, c_uint, c_void, CString};
 use std::fs;
+use std::mem;
+use std::os::fd::RawFd;
 use std::os::wasi::ffi::OsStrExt;
-use std::os::wasi::prelude::RawFd;
 use std::path::Path;
 use std::ptr;
 use std::str;
 
 mod wasi_ext_lib_generated;
+use wasi_ext_lib_generated::{
+    RedirectType_APPEND, RedirectType_CLOSE, RedirectType_DUPLICATE, RedirectType_PIPEIN,
+    RedirectType_PIPEOUT, RedirectType_READ, RedirectType_READWRITE, RedirectType_WRITE,
+    Redirect_Data, Redirect_Data_Path, STDIN, STDOUT,
+};
 
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
@@ -30,10 +36,16 @@ pub use wasi::SIGNAL_KILL;
 type ExitCode = i32;
 type Pid = i32;
 
-pub enum Redirect<'a> {
-    Read((wasi::Fd, &'a str)),
-    Write((wasi::Fd, &'a str)),
-    Append((wasi::Fd, &'a str)),
+#[derive(Debug)]
+pub enum Redirect {
+    Read(wasi::Fd, String),
+    Write(wasi::Fd, String),
+    Append(wasi::Fd, String),
+    ReadWrite(wasi::Fd, String),
+    PipeIn(wasi::Fd),
+    PipeOut(wasi::Fd),
+    Duplicate { fd_src: wasi::Fd, fd_dst: wasi::Fd },
+    Close(wasi::Fd),
 }
 
 #[repr(u32)]
@@ -43,44 +55,65 @@ pub enum IoctlNum {
     SetEcho = wasi_ext_lib_generated::TIOCSECHO,
 }
 
-enum CStringRedirect {
-    Read((wasi::Fd, CString)),
-    Write((wasi::Fd, CString)),
-    Append((wasi::Fd, CString)),
-}
-
-impl From<Redirect<'_>> for CStringRedirect {
-    fn from(redirect: Redirect) -> Self {
+impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
+    fn from(redirect: &Redirect) -> Self {
         match redirect {
-            Redirect::Read((fd, path)) => CStringRedirect::Read((fd, CString::new(path).unwrap())),
-            Redirect::Write((fd, path)) => {
-                CStringRedirect::Write((fd, CString::new(path).unwrap()))
+            Redirect::Read(fd, path)
+            | Redirect::Write(fd, path)
+            | Redirect::Append(fd, path)
+            | Redirect::ReadWrite(fd, path) => {
+                let tag = match redirect {
+                    Redirect::Read(_, _) => RedirectType_READ,
+                    Redirect::Write(_, _) => RedirectType_WRITE,
+                    Redirect::Append(_, _) => RedirectType_APPEND,
+                    Redirect::ReadWrite(_, _) => RedirectType_READWRITE,
+                    _ => unreachable!(),
+                };
+
+                wasi_ext_lib_generated::Redirect {
+                    data: Redirect_Data {
+                        path: Redirect_Data_Path {
+                            path_str: path.as_ptr() as *const i8,
+                            path_len: path.len(),
+                        },
+                    },
+                    fd_dst: *fd as i32,
+                    type_: tag,
+                }
             }
-            Redirect::Append((fd, path)) => {
-                CStringRedirect::Append((fd, CString::new(path).unwrap()))
-            }
+            Redirect::PipeIn(fd_src) => wasi_ext_lib_generated::Redirect {
+                data: Redirect_Data {
+                    fd_src: *fd_src as i32,
+                },
+                fd_dst: STDIN,
+                type_: RedirectType_PIPEIN,
+            },
+            Redirect::PipeOut(fd_src) => wasi_ext_lib_generated::Redirect {
+                data: Redirect_Data {
+                    fd_src: *fd_src as i32,
+                },
+                fd_dst: STDOUT,
+                type_: RedirectType_PIPEOUT,
+            },
+            Redirect::Duplicate { fd_src, fd_dst } => wasi_ext_lib_generated::Redirect {
+                data: Redirect_Data {
+                    fd_src: *fd_src as i32,
+                },
+                fd_dst: *fd_dst as i32,
+                type_: RedirectType_DUPLICATE,
+            },
+            Redirect::Close(fd_dst) => wasi_ext_lib_generated::Redirect {
+                data: unsafe { mem::zeroed() }, // ignore field in kernel
+                fd_dst: *fd_dst as i32,
+                type_: RedirectType_CLOSE,
+            },
         }
     }
 }
 
-unsafe fn get_c_redirect(r: &CStringRedirect) -> wasi_ext_lib_generated::Redirect {
-    match r {
-        CStringRedirect::Read((fd, path)) => wasi_ext_lib_generated::Redirect {
-            type_: wasi_ext_lib_generated::RedirectType_READ,
-            path: path.as_c_str().as_ptr(),
-            fd: *fd as i32,
-        },
-        CStringRedirect::Write((fd, path)) => wasi_ext_lib_generated::Redirect {
-            type_: wasi_ext_lib_generated::RedirectType_WRITE,
-            path: path.as_c_str().as_ptr(),
-            fd: *fd as i32,
-        },
-        CStringRedirect::Append((fd, path)) => wasi_ext_lib_generated::Redirect {
-            type_: wasi_ext_lib_generated::RedirectType_APPEND,
-            path: path.as_c_str().as_ptr(),
-            fd: *fd as i32,
-        },
-    }
+pub enum FcntlCommand {
+    // like F_DUPFD but it move fd insted of duplicating
+    F_MVFD { min_fd_num: wasi::Fd },
 }
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
@@ -205,7 +238,7 @@ pub fn spawn(
     args: &[&str],
     env: &HashMap<String, String>,
     background: bool,
-    redirects: Vec<Redirect>,
+    redirects: &[Redirect],
 ) -> Result<(ExitCode, Pid), ExitCode> {
     let mut child_pid: Pid = -1;
     let syscall_result = unsafe {
@@ -223,12 +256,11 @@ pub fn spawn(
                 )
             })
             .collect::<Vec<(CString, CString)>>();
-
-        let cstring_redirects = redirects
-            .into_iter()
-            .map(CStringRedirect::from)
-            .collect::<Vec<CStringRedirect>>();
-
+        let redirects_len = redirects.len();
+        let redirects_vec = redirects
+            .iter()
+            .map(wasi_ext_lib_generated::Redirect::from)
+            .collect::<Vec<wasi_ext_lib_generated::Redirect>>();
         wasi_ext_lib_generated::wasi_ext_spawn(
             CString::new(path).unwrap().as_c_str().as_ptr(),
             cstring_args
@@ -247,12 +279,8 @@ pub fn spawn(
                 .as_ptr(),
             env.len(),
             background as i32,
-            cstring_redirects
-                .iter()
-                .map(|red| get_c_redirect(red))
-                .collect::<Vec<wasi_ext_lib_generated::Redirect>>()
-                .as_ptr(),
-            cstring_redirects.len(),
+            redirects_vec.as_ptr(),
+            redirects_len,
             &mut child_pid,
         )
     };
@@ -289,5 +317,22 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
         Err(-result)
     } else {
         Ok(())
+    }
+}
+pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
+    let result = match cmd {
+        FcntlCommand::F_MVFD { min_fd_num } => unsafe {
+            wasi_ext_lib_generated::wasi_ext_fcntl(
+                fd as c_int,
+                wasi_ext_lib_generated::FcntlCommand_F_MVFD,
+                min_fd_num as *mut c_void,
+            )
+        },
+    };
+
+    if result < 0 {
+        Err(-result)
+    } else {
+        Ok(result)
     }
 }

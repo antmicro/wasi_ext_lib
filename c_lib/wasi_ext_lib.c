@@ -19,24 +19,6 @@
 #define SYSCALL_LENGTH 256
 #define SYSCALL_ARGS_LENGTH 2048
 
-JsonNode *json_mkredirect(struct Redirect redir) {
-    JsonNode *node = json_mkobject();
-    json_append_member(node, "fd", json_mknumber((double)redir.fd));
-    json_append_member(node, "path", json_mkstring(redir.path));
-    switch (redir.type) {
-    case READ:
-        json_append_member(node, "mode", json_mkstring("read"));
-        break;
-    case WRITE:
-        json_append_member(node, "mode", json_mkstring("write"));
-        break;
-    case APPEND:
-        json_append_member(node, "mode", json_mkstring("append"));
-        break;
-    }
-    return node;
-}
-
 int __syscall(const char *command, char *args, uint8_t *output_buf,
               size_t output_buf_len) {
     char *ptr;
@@ -212,11 +194,10 @@ int wasi_ext_spawn(const char *path, const char *const *args, size_t n_args,
 
     json_append_member(root, "background", json_mkbool((bool)background));
 
-    JsonNode *_redirects = json_mkarray();
-    for (size_t i = 0; i < n_redirects; i++) {
-        json_append_element(_redirects, json_mkredirect(redirects[i]));
-    }
-    json_append_member(root, "redirects", _redirects);
+    json_append_member(root, "redirects_ptr",
+                       json_mknumber((double)((size_t)redirects)));
+
+    json_append_member(root, "n_redirects", json_mknumber((double)n_redirects));
 
     char *call_args = json_stringify(0, root, " ");
     json_delete(root);
@@ -261,4 +242,45 @@ int wasi_ext_ioctl(int fd, unsigned int cmd, void *arg) {
     free(serialized);
 
     return -err;
+}
+
+int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
+    __wasi_errno_t err;
+    switch (cmd) {
+    case F_MVFD: {
+        int min_fd = *((int *)arg);
+        __wasi_fdstat_t stat;
+
+        for (; min_fd < _MAX_FD_NUM; ++min_fd) {
+            err = __wasi_fd_fdstat_get(min_fd, &stat);
+
+            if (__WASI_ERRNO_BADF == err) {
+                break;
+            } else if (__WASI_ERRNO_SUCCESS != err) {
+                return -err;
+            }
+        }
+
+        if (min_fd >= _MAX_FD_NUM) {
+            return __WASI_ERRNO_MFILE;
+        }
+
+        // We assume fd_renumber behaves like dup2
+        err = __wasi_fd_renumber(fd, min_fd);
+        if (__WASI_ERRNO_SUCCESS != err) {
+            return -err;
+        }
+
+        err = __wasi_fd_close(fd);
+        if (__WASI_ERRNO_SUCCESS != err) {
+            return -err;
+        }
+        break;
+    }
+    default: {
+        return -EINVAL;
+    }
+    }
+
+    return 0;
 }

@@ -33,6 +33,8 @@
 #define _IOGM(mn) ((mn & _IOM_MASK) >> _IOM_OFF)
 #define _IOGF(mn) ((mn & _IOF_MASK) >> _IOF_OFF)
 
+#define _MAX_FD_NUM 1024
+
 #include <stdlib.h>
 
 // Ioctl magic numbers
@@ -40,13 +42,37 @@ const unsigned int TIOCGWINSZ = _IOR(1, 0, 8);
 const unsigned int TIOCSRAW = _IOW(1, 1, 4);
 const unsigned int TIOCSECHO = _IOW(1, 2, 4);
 
-enum RedirectType { READ, WRITE, APPEND };
+// Fnctl commands
+enum FcntlCommand { F_MVFD };
+
+const int STDIN = 0;
+const int STDOUT = 1;
+
+enum RedirectType {
+    READ,
+    WRITE,
+    APPEND,
+    READWRITE,
+    PIPEIN,
+    PIPEOUT,
+    DUPLICATE,
+    CLOSE
+};
 
 struct Redirect {
-    int fd;
-    const char *path;
+    union Data {
+        struct Path {
+            const char *path_str;
+            size_t path_len;
+        } path;
+
+        int fd_src;
+    } data;
+
+    int fd_dst;
     enum RedirectType type;
 };
+
 struct Env {
     const char *attrib;
     const char *val;
@@ -74,8 +100,9 @@ int wasi_ext_attach_sigint(int32_t);
 int wasi_ext_clean_inodes();
 int wasi_ext_spawn(const char *, const char *const *, size_t,
                    const struct Env *, size_t, int, const struct Redirect *,
-                   size_t n_redirects, int *);
+                   size_t, int *);
 int wasi_ext_kill(int, int);
 int wasi_ext_ioctl(int, unsigned int, void *);
+int wasi_ext_fcntl(int, enum FcntlCommand, void *);
 
 #endif
