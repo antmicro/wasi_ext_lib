@@ -322,10 +322,11 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
 pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
     let result = match cmd {
         FcntlCommand::F_MVFD { min_fd_num } => unsafe {
+            let mut min_fd = min_fd_num;
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
                 wasi_ext_lib_generated::FcntlCommand_F_MVFD,
-                min_fd_num as *mut c_void,
+                (&mut min_fd as *mut u32) as *mut c_void,
             )
         },
     };

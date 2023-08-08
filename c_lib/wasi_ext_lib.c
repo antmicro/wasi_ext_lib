@@ -275,12 +275,11 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
         if (__WASI_ERRNO_SUCCESS != err) {
             return -err;
         }
-        break;
-    }
-    default: {
-        return -EINVAL;
+
+        // like F_DUPFD, return allocated fd
+        return min_fd;
     }
     }
 
-    return 0;
+    return -EINVAL;
 }
