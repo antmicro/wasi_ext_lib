@@ -362,3 +362,37 @@ pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
         Ok(result)
     }
 }
+
+pub fn mount(
+    source_fd: RawFd,
+    source_path: &str,
+    target_fd: RawFd,
+    target_path: &str,
+    filesystem_type: &str,
+    opts: u64,
+    data: &str,
+) -> Result<(), ExitCode> {
+    let c_source_path = CString::new(source_path).unwrap();
+    let c_target_path = CString::new(target_path).unwrap();
+
+    let c_filesystem_type = CString::new(filesystem_type).unwrap();
+    let c_data = CString::new(data).unwrap();
+
+    let result = unsafe {
+        wasi_ext_lib_generated::wasi_ext_mount(
+            source_fd,
+            c_source_path.as_ptr() as *const i8,
+            target_fd,
+            c_target_path.as_ptr() as *const i8,
+            c_filesystem_type.as_ptr() as *const i8,
+            opts,
+            c_data.as_ptr() as *const i8,
+        )
+    };
+
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(result)
+    }
+}

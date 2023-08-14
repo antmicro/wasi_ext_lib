@@ -39,6 +39,42 @@ int __syscall(const char *command, char *args, uint8_t *output_buf,
     return err;
 }
 
+int wasi_ext_mount(int source_fd, const char *source_path, int target_fd,
+                   const char *target_path, const char *filesystem_type,
+                   uint64_t mount_flags, const char *data) {
+    JsonNode *root = json_mkobject();
+
+    json_append_member(root, "source_fd", json_mknumber((double)source_fd));
+    json_append_member(root, "source",
+                       json_mknumber((double)(size_t)source_path));
+    json_append_member(root, "source_len",
+                       json_mknumber((double)strlen(source_path)));
+
+    json_append_member(root, "target_fd", json_mknumber((double)target_fd));
+    json_append_member(root, "target",
+                       json_mknumber((double)(size_t)target_path));
+    json_append_member(root, "target_len",
+                       json_mknumber((double)strlen(target_path)));
+
+    json_append_member(root, "filesystemtype",
+                       json_mknumber((double)(size_t)filesystem_type));
+    json_append_member(root, "filesystemtype_len",
+                       json_mknumber((double)strlen(filesystem_type)));
+
+    json_append_member(root, "mountflags", json_mknumber((double)mount_flags));
+
+    json_append_member(root, "data", json_mknumber((double)(size_t)data));
+    json_append_member(root, "data_len", json_mknumber((double)strlen(data)));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("mount", serialized, NULL, 0);
+    free(serialized);
+
+    return err;
+}
+
 int wasi_ext_chdir(const char *path) {
     // wasi lib doesn't support realpath, so the given path must be
     // canonicalized
