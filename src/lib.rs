@@ -364,9 +364,7 @@ pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
 }
 
 pub fn mount(
-    source_fd: RawFd,
     source_path: &str,
-    target_fd: RawFd,
     target_path: &str,
     filesystem_type: &str,
     opts: u64,
@@ -380,9 +378,9 @@ pub fn mount(
 
     let result = unsafe {
         wasi_ext_lib_generated::wasi_ext_mount(
-            source_fd,
+            -1,
             c_source_path.as_ptr() as *const i8,
-            target_fd,
+            -1,
             c_target_path.as_ptr() as *const i8,
             c_filesystem_type.as_ptr() as *const i8,
             opts,
