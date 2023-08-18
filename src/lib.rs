@@ -394,3 +394,15 @@ pub fn mount(
         Err(result)
     }
 }
+
+pub fn umount(path: &str) -> Result<(), ExitCode> {
+    let c_path = CString::new(path).unwrap();
+
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_umount(c_path.as_ptr() as *const i8) };
+
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(result)
+    }
+}

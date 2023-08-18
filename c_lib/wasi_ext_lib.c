@@ -75,6 +75,21 @@ int wasi_ext_mount(int source_fd, const char *source_path, int target_fd,
     return err;
 }
 
+int wasi_ext_umount(const char *path) {
+    JsonNode *root = json_mkobject();
+
+    json_append_member(root, "path", json_mknumber((double)(size_t)path));
+    json_append_member(root, "path_len", json_mknumber(strlen(path)));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("umount", serialized, NULL, 0);
+    free(serialized);
+
+    return err;
+}
+
 int wasi_ext_chdir(const char *path) {
     // wasi lib doesn't support realpath, so the given path must be
     // canonicalized
