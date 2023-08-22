@@ -25,6 +25,10 @@ use wasi_ext_lib_generated::{
     Redirect_Data, Redirect_Data_Path, STDIN, STDOUT,
 };
 
+pub use wasi_ext_lib_generated::{
+    WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK, WASI_EXT_FDFLAG_CLOEXEC
+};
+
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
     WasiEvents, TIOCGWINSZ, TIOCSECHO, TIOCSRAW, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM,
