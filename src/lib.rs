@@ -26,7 +26,7 @@ use wasi_ext_lib_generated::{
 };
 
 pub use wasi_ext_lib_generated::{
-    WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK, WASI_EXT_FDFLAG_CLOEXEC
+    WASI_EXT_FDFLAG_CLOEXEC, WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK,
 };
 
 #[cfg(feature = "hterm")]
@@ -119,7 +119,7 @@ pub enum FcntlCommand {
     // like F_DUPFD but it move fd insted of duplicating
     F_MVFD { min_fd_num: wasi::Fd },
     F_GETFD,
-    F_SETFD { flags: wasi::Fdflags } , 
+    F_SETFD { flags: wasi::Fdflags },
 }
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
@@ -340,7 +340,7 @@ pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
                 wasi_ext_lib_generated::FcntlCommand_F_GETFD,
-                null_ptr
+                null_ptr,
             )
         },
         FcntlCommand::F_SETFD { flags } => unsafe {
@@ -348,7 +348,7 @@ pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
                 wasi_ext_lib_generated::FcntlCommand_F_SETFD,
-                (&mut flags as *mut wasi::Fdflags) as *mut c_void
+                (&mut flags as *mut wasi::Fdflags) as *mut c_void,
             )
         },
     };

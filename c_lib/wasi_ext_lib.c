@@ -282,7 +282,7 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
     case F_GETFD: {
         __wasi_fdstat_t stat;
         err = __wasi_fd_fdstat_get(fd, &stat);
-        
+
         if (__WASI_ERRNO_SUCCESS != err) {
             return -err;
         }
@@ -292,7 +292,7 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
         return (int)flags;
     }
     case F_SETFD: {
-        __wasi_fdflags_t flags = *((__wasi_fdflags_t*)arg);
+        __wasi_fdflags_t flags = *((__wasi_fdflags_t *)arg);
         // set control bit to enable extended flags processing
         flags |= WASI_EXT_FDFLAG_CTRL_BIT;
 
