@@ -25,6 +25,10 @@ use wasi_ext_lib_generated::{
     Redirect_Data, Redirect_Data_Path, STDIN, STDOUT,
 };
 
+pub use wasi_ext_lib_generated::{
+    WASI_EXT_FDFLAG_CLOEXEC, WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK,
+};
+
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
     WasiEvents, TIOCGWINSZ, TIOCSECHO, TIOCSRAW, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM,
@@ -114,6 +118,8 @@ impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
 pub enum FcntlCommand {
     // like F_DUPFD but it move fd insted of duplicating
     F_MVFD { min_fd_num: wasi::Fd },
+    F_GETFD,
+    F_SETFD { flags: wasi::Fdflags },
 }
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
@@ -327,6 +333,22 @@ pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
                 fd as c_int,
                 wasi_ext_lib_generated::FcntlCommand_F_MVFD,
                 (&mut min_fd as *mut u32) as *mut c_void,
+            )
+        },
+        FcntlCommand::F_GETFD => unsafe {
+            let null_ptr = ptr::null_mut::<c_void>();
+            wasi_ext_lib_generated::wasi_ext_fcntl(
+                fd as c_int,
+                wasi_ext_lib_generated::FcntlCommand_F_GETFD,
+                null_ptr,
+            )
+        },
+        FcntlCommand::F_SETFD { flags } => unsafe {
+            let mut flags = flags;
+            wasi_ext_lib_generated::wasi_ext_fcntl(
+                fd as c_int,
+                wasi_ext_lib_generated::FcntlCommand_F_SETFD,
+                (&mut flags as *mut wasi::Fdflags) as *mut c_void,
             )
         },
     };

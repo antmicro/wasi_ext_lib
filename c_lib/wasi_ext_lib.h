@@ -35,6 +35,8 @@
 
 #define _MAX_FD_NUM 1024
 
+#include <wasi/api.h>
+
 #include <stdlib.h>
 
 // Ioctl magic numbers
@@ -43,7 +45,12 @@ const unsigned int TIOCSRAW = _IOW(1, 1, 4);
 const unsigned int TIOCSECHO = _IOW(1, 2, 4);
 
 // Fnctl commands
-enum FcntlCommand { F_MVFD };
+enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };
+
+// Extended fs_fdflags
+const __wasi_fdflags_t WASI_EXT_FDFLAG_CTRL_BIT = 0x0020;
+const __wasi_fdflags_t WASI_EXT_FDFLAG_MASK = 0xffc0;
+const __wasi_fdflags_t WASI_EXT_FDFLAG_CLOEXEC = 0x0040;
 
 const int STDIN = 0;
 const int STDOUT = 1;

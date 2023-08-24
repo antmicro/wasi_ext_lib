@@ -279,6 +279,27 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
         // like F_DUPFD, return allocated fd
         return min_fd;
     }
+    case F_GETFD: {
+        __wasi_fdstat_t stat;
+        err = __wasi_fd_fdstat_get(fd, &stat);
+
+        if (__WASI_ERRNO_SUCCESS != err) {
+            return -err;
+        }
+
+        __wasi_fdflags_t flags = stat.fs_flags & WASI_EXT_FDFLAG_MASK;
+
+        return (int)flags;
+    }
+    case F_SETFD: {
+        __wasi_fdflags_t flags = *((__wasi_fdflags_t *)arg);
+        // set control bit to enable extended flags processing
+        flags |= WASI_EXT_FDFLAG_CTRL_BIT;
+
+        err = __wasi_fd_fdstat_set_flags(fd, flags);
+
+        return -err;
+    }
     }
 
     return -EINVAL;
