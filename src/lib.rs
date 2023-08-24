@@ -336,7 +336,7 @@ pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
             )
         },
         FcntlCommand::F_GETFD => unsafe {
-            let null_ptr = ptr::null_mut() as *mut c_void;
+            let null_ptr = ptr::null_mut::<c_void>();
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
                 wasi_ext_lib_generated::FcntlCommand_F_GETFD,
