@@ -39,10 +39,10 @@
 
 #define _MAX_FD_NUM 1024
 
-// Ioctl magic numbers
-#define TIOCGWINSZ _IOR(1, 0, 8)
-#define TIOCSRAW _IOR(1, 1, 4)
-#define TIOCSECHO _IOR(1, 2, 4)
+#define TIOCGWINSZ _IOR(1, 13, 0);
+// TODO: remove it later
+#define TIOCSRAW _IOW(1, 1, 4);
+#define TIOCSECHO _IOW(1, 2, 4);
 
 // Extended fs_fdflags
 #define WASI_EXT_FDFLAG_CTRL_BIT 0x0020
