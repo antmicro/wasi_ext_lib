@@ -6,6 +6,10 @@
 #ifndef c_bindings_wasi_ext_lib_h_INCLUDED
 #define c_bindings_wasi_ext_lib_h_INCLUDED
 
+#include <wasi/api.h>
+
+#include <stdlib.h>
+
 #define _IOC_NONE 0U
 #define _IOC_WRITE 1U
 #define _IOC_READ 2U
@@ -35,25 +39,21 @@
 
 #define _MAX_FD_NUM 1024
 
-#include <wasi/api.h>
-
-#include <stdlib.h>
+#define STDIN 0
+#define STDOUT 1
 
 // Ioctl magic numbers
-const unsigned int TIOCGWINSZ = _IOR(1, 0, 8);
-const unsigned int TIOCSRAW = _IOW(1, 1, 4);
-const unsigned int TIOCSECHO = _IOW(1, 2, 4);
+#define TIOCGWINSZ _IOR(1, 0, 8)
+#define TIOCSRAW _IOR(1, 1, 4)
+#define TIOCSECHO _IOR(1, 2, 4)
+
+// Extended fs_fdflags
+#define WASI_EXT_FDFLAG_CTRL_BIT 0x0020
+#define WASI_EXT_FDFLAG_MASK 0xffc0
+#define WASI_EXT_FDFLAG_CLOEXEC 0x0040
 
 // Fnctl commands
 enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };
-
-// Extended fs_fdflags
-const __wasi_fdflags_t WASI_EXT_FDFLAG_CTRL_BIT = 0x0020;
-const __wasi_fdflags_t WASI_EXT_FDFLAG_MASK = 0xffc0;
-const __wasi_fdflags_t WASI_EXT_FDFLAG_CLOEXEC = 0x0040;
-
-const int STDIN = 0;
-const int STDOUT = 1;
 
 enum RedirectType {
     READ,
