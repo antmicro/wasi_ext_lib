@@ -39,9 +39,6 @@
 
 #define _MAX_FD_NUM 1024
 
-#define STDIN 0
-#define STDOUT 1
-
 // Ioctl magic numbers
 #define TIOCGWINSZ _IOR(1, 0, 8)
 #define TIOCSRAW _IOR(1, 1, 4)

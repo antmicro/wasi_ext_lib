@@ -11,7 +11,9 @@ use std::convert::From;
 use std::env;
 use std::ffi::{c_int, c_uint, c_void, CString};
 use std::fs;
+use std::io;
 use std::mem;
+use std::os::fd::AsRawFd;
 use std::os::fd::RawFd;
 use std::os::wasi::ffi::OsStrExt;
 use std::path::Path;
@@ -22,7 +24,7 @@ mod wasi_ext_lib_generated;
 use wasi_ext_lib_generated::{
     RedirectType_APPEND, RedirectType_CLOSE, RedirectType_DUPLICATE, RedirectType_PIPEIN,
     RedirectType_PIPEOUT, RedirectType_READ, RedirectType_READWRITE, RedirectType_WRITE,
-    Redirect_Data, Redirect_Data_Path, STDIN, STDOUT,
+    Redirect_Data, Redirect_Data_Path,
 };
 
 pub use wasi_ext_lib_generated::{
@@ -97,14 +99,14 @@ impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
                 data: Redirect_Data {
                     fd_src: *fd_src as i32,
                 },
-                fd_dst: STDIN,
+                fd_dst: io::stdin().as_raw_fd(),
                 type_: RedirectType_PIPEIN,
             },
             Redirect::PipeOut(fd_src) => wasi_ext_lib_generated::Redirect {
                 data: Redirect_Data {
                     fd_src: *fd_src as i32,
                 },
-                fd_dst: STDOUT,
+                fd_dst: io::stdout().as_raw_fd(),
                 type_: RedirectType_PIPEOUT,
             },
             Redirect::Duplicate { fd_src, fd_dst } => wasi_ext_lib_generated::Redirect {
