@@ -190,16 +190,9 @@ pub fn set_env(key: &str, val: Option<&str>) -> Result<(), ExitCode> {
     let c_key = CString::new(key).unwrap();
     match if let Some(v) = val {
         let c_val = CString::new(v).unwrap();
-        unsafe {
-            wasi_ext_lib_generated::wasi_ext_set_env(
-                c_key.as_ptr() as *const i8,
-                c_val.as_ptr() as *const i8,
-            )
-        }
+        unsafe { wasi_ext_lib_generated::wasi_ext_set_env(c_key.as_ptr(), c_val.as_ptr()) }
     } else {
-        unsafe {
-            wasi_ext_lib_generated::wasi_ext_set_env(c_key.as_ptr() as *const i8, ptr::null::<i8>())
-        }
+        unsafe { wasi_ext_lib_generated::wasi_ext_set_env(c_key.as_ptr(), ptr::null::<i8>()) }
     } {
         0 => Ok(()),
         e => Err(e),
