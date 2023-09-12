@@ -10,7 +10,7 @@ edition = "2021"
 wasi = "0.11.0"
 
 [build-dependencies]
-bindgen = "0.61.0"
+bindgen = "0.68.0"
 
 [features]
 hterm = []
