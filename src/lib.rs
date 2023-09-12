@@ -31,9 +31,17 @@ pub use wasi_ext_lib_generated::{
 
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
-    WasiEvents, TIOCGWINSZ, TIOCSECHO, TIOCSRAW, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM,
-    WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
+    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
 };
+
+// #[cfg(feature = "hterm")]
+// use wasi_ext_lib_generated::{TIOCGWINSZ, TIOCSECHO, TIOCSRAW};
+// Bindgen cannot properly expand functional macros to generate constants
+// from macros. These constants need to be hard-coded for now.
+// See https://github.com/rust-lang/rust-bindgen/issues/753
+const TIOCGWINSZ: u32 = 2148008192;
+const TIOCSRAW: u32 = 2147746049;
+const TIOCSECHO: u32 = 2147746050;
 
 pub use wasi::SIGNAL_KILL;
 
@@ -54,9 +62,9 @@ pub enum Redirect {
 
 #[repr(u32)]
 pub enum IoctlNum {
-    GetScreenSize = wasi_ext_lib_generated::TIOCGWINSZ,
-    SetRaw = wasi_ext_lib_generated::TIOCSRAW,
-    SetEcho = wasi_ext_lib_generated::TIOCSECHO,
+    GetScreenSize = TIOCGWINSZ,
+    SetRaw = TIOCSRAW,
+    SetEcho = TIOCSECHO,
 }
 
 impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
