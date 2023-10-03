@@ -379,12 +379,12 @@ pub fn mount(
     let result = unsafe {
         wasi_ext_lib_generated::wasi_ext_mount(
             -1,
-            c_source_path.as_ptr() as *const i8,
+            c_source_path.as_ptr(),
             -1,
-            c_target_path.as_ptr() as *const i8,
-            c_filesystem_type.as_ptr() as *const i8,
+            c_target_path.as_ptr(),
+            c_filesystem_type.as_ptr(),
             opts,
-            c_data.as_ptr() as *const i8,
+            c_data.as_ptr(),
         )
     };
 
@@ -398,7 +398,7 @@ pub fn mount(
 pub fn umount(path: &str) -> Result<(), ExitCode> {
     let c_path = CString::new(path).unwrap();
 
-    let result = unsafe { wasi_ext_lib_generated::wasi_ext_umount(c_path.as_ptr() as *const i8) };
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_umount(c_path.as_ptr()) };
 
     if result == 0 {
         Ok(())
