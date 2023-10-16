@@ -41,7 +41,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lib.rs");
     let mut bgen = bindgen::Builder::default()
         .header(format!("{CLIB_DIR}/wasi_ext_lib.h"));
-        // .header(format!("{CLIB_THIRD_PARTY_DIR}/termios/termios.h"));
     if cfg!(feature = "hterm") {
         bgen = bgen.clang_arg("-DHTERM");
     }
@@ -51,7 +50,8 @@ fn main() {
     ))
     .clang_arg("-fvisibility=default")
     .allowlist_file(format!("{CLIB_DIR}/wasi_ext_lib.h"))
-    // .allowlist_file(format!("{CLIB_THIRD_PARTY_DIR}/termios/termios.h"))
+    .allowlist_file(format!("{CLIB_THIRD_PARTY_DIR}/termios/termios.h"))
+    .allowlist_file(format!("{CLIB_THIRD_PARTY_DIR}/termios/bits/termios.h"))
     .parse_callbacks(Box::new(bindgen::CargoCallbacks))
     .generate()
     .expect("Unable to generate bindings")

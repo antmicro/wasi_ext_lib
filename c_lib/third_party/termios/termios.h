@@ -21,7 +21,6 @@ typedef unsigned int tcflag_t;
 #define NCCS 32
 
 #include "bits/termios.h"
-#include "../../wasi_ext_lib.h"
 
 // Ioctl magic numbers
 #define TCGETS _IOR(1, 1, 0)

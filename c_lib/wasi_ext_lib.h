@@ -111,4 +111,7 @@ int wasi_ext_fcntl(int, enum FcntlCommand, void *);
 int wasi_ext_mount(int, const char *, int, const char *, const char *, uint64_t,
                    const char *);
 int wasi_ext_umount(const char *);
+
+#include "third_party/termios/termios.h"
+
 #endif
