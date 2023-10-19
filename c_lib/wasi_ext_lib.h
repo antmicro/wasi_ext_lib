@@ -39,7 +39,6 @@
 
 #define _MAX_FD_NUM 1024
 
-#define TIOCGWINSZ _IOR(1, 13, 0);
 // TODO: remove it later
 #define TIOCSRAW _IOW(1, 1, 4);
 #define TIOCSECHO _IOW(1, 2, 4);

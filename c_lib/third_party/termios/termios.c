@@ -4,6 +4,8 @@
 #include "termios.h"
 #include <errno.h>
 
+#include "../../wasi_ext_lib.h"
+
 speed_t wasi_ext_cfgetospeed (const struct termios * termios_p)
 {
     return -ENOTSUP;
@@ -31,10 +33,24 @@ int wasi_ext_tcgetattr(int fd, struct termios *tio)
 
 int wasi_ext_tcsetattr(int fd, int act, const struct termios *tio)
 {
-    if (act != 0) {
+    unsigned int cmd;
+    switch (act)
+    {
+    case TCSANOW: {
+        cmd = TCSETS;
+        break;
+    }
+    case TCSADRAIN:
+    case TCSAFLUSH: {
+        return -ENOTSUP;
+        break;
+    }
+    default: {
         return -EINVAL;
     }
-    return -wasi_ext_ioctl(fd, TCSETS+act, (void*)tio);
+    }
+
+    return -wasi_ext_ioctl(fd, cmd, (void*)tio);
 }
 
 int wasi_ext_tcgetwinsize (int fd, struct winsize * winsize_p)
@@ -74,6 +90,12 @@ pid_t wasi_ext_tcgetsid (int fd)
 
 void wasi_ext_cfmakeraw(struct termios * termios_p)
 {
+    termios_p->c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP|INLCR|IGNCR|ICRNL|IXON);
+    termios_p->c_oflag &= ~OPOST;
+    termios_p->c_lflag &= ~(ECHO|ECHONL|ICANON|ISIG|IEXTEN);
+    termios_p->c_cflag &= ~(CSIZE|PARENB);
+    termios_p->c_cflag |= CS8;
+
     return;
 }
 
