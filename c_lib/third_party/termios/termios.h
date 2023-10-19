@@ -29,7 +29,6 @@ typedef unsigned int tcflag_t;
 #define TCSETS		0x5402
 #define TCSETSW		0x5403
 #define TCSETSF		0x5404
-
 #define TCGETA		0x5405
 #define TCSETA		0x5406
 #define TCSETAW		0x5407

@@ -44,9 +44,9 @@
 #define TIOCSECHO _IOW(1, 2, 4);
 
 // Extended fs_fdflags
-#define WASI_EXT_FDFLAG_CTRL_BIT 0x0020
-#define WASI_EXT_FDFLAG_MASK 0xffc0
-#define WASI_EXT_FDFLAG_CLOEXEC 0x0040
+#define WASI_EXT_FDFLAG_CTRL_BIT (__wasi_fdflags_t)0x0020
+#define WASI_EXT_FDFLAG_MASK (__wasi_fdflags_t)0xffc0
+#define WASI_EXT_FDFLAG_CLOEXEC (__wasi_fdflags_t)0x0040
 
 // Fnctl commands
 enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };

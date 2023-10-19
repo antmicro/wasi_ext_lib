@@ -27,20 +27,26 @@ use wasi_ext_lib_generated::{
     Redirect_Data, Redirect_Data_Path,
 };
 
-pub use wasi_ext_lib_generated::{
-    WASI_EXT_FDFLAG_CLOEXEC, WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK,
-};
-
 #[cfg(feature = "hterm")]
 pub use wasi_ext_lib_generated::{
     WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
 };
 
+pub mod termios_generated;
+pub use termios_generated as termios;
+
+// pub use wasi_ext_lib_generated::{
+//     WASI_EXT_FDFLAG_CLOEXEC, WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK,
+// };
 // #[cfg(feature = "hterm")]
 // use wasi_ext_lib_generated::{TIOCGWINSZ, TIOCSECHO, TIOCSRAW};
 // Bindgen cannot properly expand functional macros to generate constants
 // from macros. These constants need to be hard-coded for now.
 // See https://github.com/rust-lang/rust-bindgen/issues/753
+pub const WASI_EXT_FDFLAG_CTRL_BIT: wasi::Fdflags = 0x0020;
+pub const WASI_EXT_FDFLAG_MASK: wasi::Fdflags = 0xffc0;
+pub const WASI_EXT_FDFLAG_CLOEXEC: wasi::Fdflags = 0x0040;
+
 const TIOCGWINSZ: u32 = 2148008192;
 const TIOCSRAW: u32 = 2147746049;
 const TIOCSECHO: u32 = 2147746050;
@@ -68,6 +74,8 @@ pub enum IoctlNum {
     SetRaw = TIOCSRAW,
     SetEcho = TIOCSECHO,
 }
+
+pub enum TcsetattrAction { TCSANOW, TCSADRAIN, TCSAFLUSH, }
 
 impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
     fn from(redirect: &Redirect) -> Self {
@@ -405,4 +413,50 @@ pub fn umount(path: &str) -> Result<(), ExitCode> {
     } else {
         Err(result)
     }
+}
+
+pub fn tcgetattr(fd: wasi::Fd) -> Result<termios::termios, ExitCode> {
+    let mut termios_p: termios::termios = unsafe { mem::zeroed() };
+    let result = unsafe {
+        termios::wasi_ext_tcgetattr(
+            fd as c_int,
+            &mut termios_p as *mut termios::termios
+        )
+    };
+
+    if result == 0 {
+        Ok(termios_p)
+    } else {
+        Err(result)
+    }
+}
+
+pub fn tcsetattr(fd: wasi::Fd, act: TcsetattrAction, termios_p: &termios::termios) -> Result<(), ExitCode> {
+    let act_num = match act {
+        TcsetattrAction::TCSANOW => termios::TCSANOW,
+        TcsetattrAction::TCSADRAIN => termios::TCSADRAIN,
+        TcsetattrAction::TCSAFLUSH => termios::TCSAFLUSH,
+    } as c_int;
+
+    let result = unsafe {
+        termios::wasi_ext_tcsetattr(
+            fd as c_int,
+            act_num,
+            termios_p  as *const termios::termios
+        )
+    };
+
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(result)
+    }
+}
+
+pub fn cfmakeraw(termios_p: &mut termios::termios) {
+    unsafe {
+        termios::wasi_ext_cfmakeraw(
+            termios_p  as *mut termios::termios
+        )
+    };
 }
