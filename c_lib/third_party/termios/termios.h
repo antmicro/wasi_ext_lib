@@ -25,8 +25,10 @@ typedef unsigned int tcflag_t;
 // Ioctl magic numbers
 // https://github.com/WebAssembly/wasi-libc/blob/main/libc-top-half/musl/arch/generic/bits/ioctl.h
 
-#define TCGETS		0x5401
-#define TCSETS		0x5402
+// TODO: until bindgen does not support functional macros we need to hardcode termios ioctl commands
+// definitions from musl do not encode size of the parameters, so we need to extend them
+#define TCGETS      0x803c5401
+#define TCSETS      0x403c5402
 #define TCSETSW		0x5403
 #define TCSETSF		0x5404
 #define TCGETA		0x5405

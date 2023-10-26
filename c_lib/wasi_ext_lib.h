@@ -83,11 +83,11 @@ struct Env {
 
 #ifdef HTERM
 typedef uint32_t WasiEvents;
-const size_t WASI_EVENTS_NUM = 2;
-const size_t WASI_EVENTS_MASK_SIZE = 4; // number of bytes
+#define WASI_EVENTS_NUM (size_t)2
+#define WASI_EVENTS_MASK_SIZE (size_t)4 // number of bytes
 // Hterm events
-const WasiEvents WASI_EVENT_WINCH = 1 << 0;
-const WasiEvents WASI_EVENT_SIGINT = 1 << 1;
+#define WASI_EVENT_WINCH (WasiEvents)(1 << 0)
+#define WASI_EVENT_SIGINT (WasiEvents)(1 << 1)
 #endif
 
 int wasi_ext_chdir(const char *);

@@ -28,13 +28,15 @@ use wasi_ext_lib_generated::{
 };
 
 #[cfg(feature = "hterm")]
-pub use wasi_ext_lib_generated::{
-    WasiEvents, WASI_EVENTS_MASK_SIZE, WASI_EVENTS_NUM, WASI_EVENT_SIGINT, WASI_EVENT_WINCH,
-};
+pub use wasi_ext_lib_generated::WasiEvents;
 
 pub mod termios_generated;
 pub use termios_generated as termios;
 
+// #[cfg(feature = "hterm")]
+// pub use wasi_ext_lib_generated::{
+//      WASI_EVENT_SIGINT, WASI_EVENTS_NUM
+// };
 // pub use wasi_ext_lib_generated::{
 //     WASI_EXT_FDFLAG_CLOEXEC, WASI_EXT_FDFLAG_CTRL_BIT, WASI_EXT_FDFLAG_MASK,
 // };
@@ -43,6 +45,15 @@ pub use termios_generated as termios;
 // Bindgen cannot properly expand functional macros to generate constants
 // from macros. These constants need to be hard-coded for now.
 // See https://github.com/rust-lang/rust-bindgen/issues/753
+#[cfg(feature = "hterm")]
+pub const WASI_EVENTS_NUM: usize = 2;
+#[cfg(feature = "hterm")]
+pub const WASI_EVENTS_MASK_SIZE: usize = 4;
+#[cfg(feature = "hterm")]
+pub const WASI_EVENT_WINCH: WasiEvents = 1 << 0;
+#[cfg(feature = "hterm")]
+pub const WASI_EVENT_SIGINT: WasiEvents = 1 << 1;
+
 pub const WASI_EXT_FDFLAG_CTRL_BIT: wasi::Fdflags = 0x0020;
 pub const WASI_EXT_FDFLAG_MASK: wasi::Fdflags = 0xffc0;
 pub const WASI_EXT_FDFLAG_CLOEXEC: wasi::Fdflags = 0x0040;
