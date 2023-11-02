@@ -55,7 +55,7 @@ int wasi_ext_tcsetattr(int fd, int act, const struct termios *tio)
 
 int wasi_ext_tcgetwinsize (int fd, struct winsize * winsize_p)
 {
-    return -ENOTSUP;
+    return -wasi_ext_ioctl(fd, TIOCGWINSZ, (void*)winsize_p);
 }
 
 int wasi_ext_tcsetwinsize (int fd, const struct winsize * winsize_p)

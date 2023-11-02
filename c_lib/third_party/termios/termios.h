@@ -45,8 +45,8 @@ typedef unsigned int tcflag_t;
 #define TIOCSPGRP	0x5410
 #define TIOCOUTQ	0x5411
 #define TIOCSTI		0x5412
-#define TIOCGWINSZ	0x5413
-#define TIOCSWINSZ	0x5414
+#define TIOCGWINSZ	0x80085413
+#define TIOCSWINSZ	0x40085414
 #define TIOCMGET	0x5415
 #define TIOCMBIS	0x5416
 #define TIOCMBIC	0x5417

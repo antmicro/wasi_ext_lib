@@ -464,6 +464,23 @@ pub fn tcsetattr(fd: wasi::Fd, act: TcsetattrAction, termios_p: &termios::termio
     }
 }
 
+pub fn tcgetwinsize(fd: wasi::Fd) -> Result<termios::winsize, ExitCode> {
+    let mut winsize: termios::winsize = unsafe { mem::zeroed() };
+
+    let result = unsafe {
+        termios::wasi_ext_tcgetwinsize(
+            fd as c_int,
+            &mut winsize as *mut termios::winsize
+        )
+    };
+
+    if result == 0 {
+        Ok(winsize)
+    } else {
+        Err(result)
+    }
+}
+
 pub fn cfmakeraw(termios_p: &mut termios::termios) {
     unsafe {
         termios::wasi_ext_cfmakeraw(
