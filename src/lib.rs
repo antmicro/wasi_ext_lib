@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::convert::From;
 use std::env;
-use std::ffi::{c_int, c_uint, c_void, CString};
+use std::ffi::{c_int, c_uint, c_ulong, c_void, CString};
 use std::fs;
 use std::io;
 use std::mem;
@@ -67,23 +67,18 @@ pub use wasi::SIGNAL_KILL;
 type ExitCode = i32;
 type Pid = i32;
 
+pub type Fd = wasi::Fd;
+
 #[derive(Debug)]
 pub enum Redirect {
-    Read(wasi::Fd, String),
-    Write(wasi::Fd, String),
-    Append(wasi::Fd, String),
-    ReadWrite(wasi::Fd, String),
-    PipeIn(wasi::Fd),
-    PipeOut(wasi::Fd),
-    Duplicate { fd_src: wasi::Fd, fd_dst: wasi::Fd },
-    Close(wasi::Fd),
-}
-
-#[repr(u32)]
-pub enum IoctlNum {
-    GetScreenSize = TIOCGWINSZ,
-    SetRaw = TIOCSRAW,
-    SetEcho = TIOCSECHO,
+    Read(Fd, String),
+    Write(Fd, String),
+    Append(Fd, String),
+    ReadWrite(Fd, String),
+    PipeIn(Fd),
+    PipeOut(Fd),
+    Duplicate { fd_src: Fd, fd_dst: Fd },
+    Close(Fd),
 }
 
 pub enum TcsetattrAction { TCSANOW, TCSADRAIN, TCSAFLUSH, }
@@ -146,7 +141,7 @@ impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
 
 pub enum FcntlCommand {
     // like F_DUPFD but it move fd insted of duplicating
-    F_MVFD { min_fd_num: wasi::Fd },
+    F_MVFD { min_fd_num: Fd },
     F_GETFD,
     F_SETFD { flags: wasi::Fdflags },
 }
@@ -328,7 +323,7 @@ pub fn kill(pid: Pid, signal: wasi::Signal) -> Result<(), ExitCode> {
     }
 }
 
-pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(), ExitCode> {
+pub fn ioctl<T>(fd: RawFd, command: c_ulong, arg: Option<&mut T>) -> Result<(), ExitCode> {
     let result = if let Some(arg) = arg {
         unsafe {
             let arg_ptr: *mut c_void = arg as *mut T as *mut c_void;
@@ -347,7 +342,7 @@ pub fn ioctl<T>(fd: RawFd, command: IoctlNum, arg: Option<&mut T>) -> Result<(),
         Ok(())
     }
 }
-pub fn fcntl(fd: wasi::Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
+pub fn fcntl(fd: Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
     let result = match cmd {
         FcntlCommand::F_MVFD { min_fd_num } => unsafe {
             let mut min_fd = min_fd_num;
@@ -426,7 +421,7 @@ pub fn umount(path: &str) -> Result<(), ExitCode> {
     }
 }
 
-pub fn tcgetattr(fd: wasi::Fd) -> Result<termios::termios, ExitCode> {
+pub fn tcgetattr(fd: Fd) -> Result<termios::termios, ExitCode> {
     let mut termios_p: termios::termios = unsafe { mem::zeroed() };
     let result = unsafe {
         termios::wasi_ext_tcgetattr(
@@ -442,7 +437,7 @@ pub fn tcgetattr(fd: wasi::Fd) -> Result<termios::termios, ExitCode> {
     }
 }
 
-pub fn tcsetattr(fd: wasi::Fd, act: TcsetattrAction, termios_p: &termios::termios) -> Result<(), ExitCode> {
+pub fn tcsetattr(fd: Fd, act: TcsetattrAction, termios_p: &termios::termios) -> Result<(), ExitCode> {
     let act_num = match act {
         TcsetattrAction::TCSANOW => termios::TCSANOW,
         TcsetattrAction::TCSADRAIN => termios::TCSADRAIN,
@@ -464,7 +459,7 @@ pub fn tcsetattr(fd: wasi::Fd, act: TcsetattrAction, termios_p: &termios::termio
     }
 }
 
-pub fn tcgetwinsize(fd: wasi::Fd) -> Result<termios::winsize, ExitCode> {
+pub fn tcgetwinsize(fd: Fd) -> Result<termios::winsize, ExitCode> {
     let mut winsize: termios::winsize = unsafe { mem::zeroed() };
 
     let result = unsafe {
