@@ -39,10 +39,6 @@
 
 #define _MAX_FD_NUM 1024
 
-// TODO: remove it later
-#define TIOCSRAW _IOW(1, 1, 4);
-#define TIOCSECHO _IOW(1, 2, 4);
-
 // Extended fs_fdflags
 #define WASI_EXT_FDFLAG_CTRL_BIT (__wasi_fdflags_t)0x0020
 #define WASI_EXT_FDFLAG_MASK (__wasi_fdflags_t)0xffc0
