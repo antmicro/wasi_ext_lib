@@ -172,18 +172,6 @@ int wasi_ext_getpid() {
     }
 }
 
-int wasi_ext_set_echo(int should_echo) {
-    JsonNode *root = json_mkobject();
-    json_append_member(root, "echo", json_mkbool(should_echo == 1));
-
-    char *serialized = json_stringify(0, root, " ");
-    json_delete(root);
-
-    int err = __syscall("set_echo", serialized, NULL, 0);
-    free(serialized);
-    return err;
-}
-
 #ifdef HTERM
 int wasi_ext_event_source_fd(uint32_t event_mask) {
     JsonNode *root = json_mkobject();

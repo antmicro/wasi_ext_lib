@@ -218,13 +218,6 @@ pub fn getpid() -> Result<Pid, ExitCode> {
     }
 }
 
-pub fn set_echo(should_echo: bool) -> Result<(), ExitCode> {
-    match unsafe { wasi_ext_lib_generated::wasi_ext_set_echo(should_echo as i32) } {
-        0 => Ok(()),
-        e => Err(e),
-    }
-}
-
 #[cfg(feature = "hterm")]
 pub fn event_source_fd(event_mask: WasiEvents) -> Result<RawFd, ExitCode> {
     let result = unsafe { wasi_ext_lib_generated::wasi_ext_event_source_fd(event_mask) };
