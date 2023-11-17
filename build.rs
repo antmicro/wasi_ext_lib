@@ -43,8 +43,7 @@ fn main() {
     let mut bgen;
 
     // termios lib
-    bgen = bindgen::Builder::default()
-        .header(format!("{CLIB_THIRD_PARTY_DIR}/termios/termios.h"));
+    bgen = bindgen::Builder::default().header(format!("{CLIB_THIRD_PARTY_DIR}/termios/termios.h"));
     bgen.clang_arg(format!(
         "--sysroot={}/share/wasi-sysroot",
         env!("WASI_SDK_PATH")
@@ -59,8 +58,7 @@ fn main() {
     .expect("could not write termios bindings");
 
     // general lib
-    bgen = bindgen::Builder::default()
-        .header(format!("{CLIB_DIR}/wasi_ext_lib.h"));
+    bgen = bindgen::Builder::default().header(format!("{CLIB_DIR}/wasi_ext_lib.h"));
     if cfg!(feature = "hterm") {
         bgen = bgen.clang_arg("-DHTERM");
     }

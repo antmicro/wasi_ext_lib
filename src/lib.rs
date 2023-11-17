@@ -77,7 +77,11 @@ pub enum Redirect {
     Close(Fd),
 }
 
-pub enum TcsetattrAction { TCSANOW, TCSADRAIN, TCSAFLUSH, }
+pub enum TcsetattrAction {
+    TCSANOW,
+    TCSADRAIN,
+    TCSAFLUSH,
+}
 
 impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
     fn from(redirect: &Redirect) -> Self {
@@ -413,10 +417,7 @@ pub fn umount(path: &str) -> Result<(), ExitCode> {
 pub fn tcgetattr(fd: Fd) -> Result<termios::termios, ExitCode> {
     let mut termios_p: termios::termios = unsafe { mem::zeroed() };
     let result = unsafe {
-        termios::wasi_ext_tcgetattr(
-            fd as c_int,
-            &mut termios_p as *mut termios::termios
-        )
+        termios::wasi_ext_tcgetattr(fd as c_int, &mut termios_p as *mut termios::termios)
     };
 
     if result == 0 {
@@ -426,7 +427,11 @@ pub fn tcgetattr(fd: Fd) -> Result<termios::termios, ExitCode> {
     }
 }
 
-pub fn tcsetattr(fd: Fd, act: TcsetattrAction, termios_p: &termios::termios) -> Result<(), ExitCode> {
+pub fn tcsetattr(
+    fd: Fd,
+    act: TcsetattrAction,
+    termios_p: &termios::termios,
+) -> Result<(), ExitCode> {
     let act_num = match act {
         TcsetattrAction::TCSANOW => termios::TCSANOW,
         TcsetattrAction::TCSADRAIN => termios::TCSADRAIN,
@@ -434,11 +439,7 @@ pub fn tcsetattr(fd: Fd, act: TcsetattrAction, termios_p: &termios::termios) -> 
     } as c_int;
 
     let result = unsafe {
-        termios::wasi_ext_tcsetattr(
-            fd as c_int,
-            act_num,
-            termios_p  as *const termios::termios
-        )
+        termios::wasi_ext_tcsetattr(fd as c_int, act_num, termios_p as *const termios::termios)
     };
 
     if result == 0 {
@@ -452,10 +453,7 @@ pub fn tcgetwinsize(fd: Fd) -> Result<termios::winsize, ExitCode> {
     let mut winsize: termios::winsize = unsafe { mem::zeroed() };
 
     let result = unsafe {
-        termios::wasi_ext_tcgetwinsize(
-            fd as c_int,
-            &mut winsize as *mut termios::winsize
-        )
+        termios::wasi_ext_tcgetwinsize(fd as c_int, &mut winsize as *mut termios::winsize)
     };
 
     if result == 0 {
@@ -466,9 +464,5 @@ pub fn tcgetwinsize(fd: Fd) -> Result<termios::winsize, ExitCode> {
 }
 
 pub fn cfmakeraw(termios_p: &mut termios::termios) {
-    unsafe {
-        termios::wasi_ext_cfmakeraw(
-            termios_p  as *mut termios::termios
-        )
-    };
+    unsafe { termios::wasi_ext_cfmakeraw(termios_p as *mut termios::termios) };
 }
