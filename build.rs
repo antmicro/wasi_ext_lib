@@ -8,13 +8,6 @@ const CLIB_DIR: &str = "c_lib";
 const CLIB_THIRD_PARTY_DIR: &str = "c_lib/third_party";
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/termios.c");
-    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/termios.h");
-    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/*");
-    println!("cargo:rerun-if-changed={CLIB_DIR}/wasi_ext_lib.c");
-    println!("cargo:rerun-if-changed={CLIB_DIR}/wasi_ext_lib.h");
-    println!("cargo:rerun-if-changed={CLIB_DIR}/Makefile");
     let mut make = Command::new("make");
     #[cfg(feature = "hterm")]
     make.arg("CFLAGS=-DHTERM");
@@ -32,12 +25,10 @@ fn main() {
     println!("cargo:rustc-link-search={CLIB_DIR}/bin/");
 
     println!("cargo:rustc-link-lib=static=wasi_ext_lib");
-    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/*");
-    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/termios.h");
-    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/termios.c");
-    println!("cargo:rerun-if-changed={CLIB_DIR}/wasi_ext_lib.h");
+    println!("cargo:rerun-if-changed={CLIB_DIR}");
+    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios");
+    println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/bits");
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed={CLIB_DIR}/wasi_ext_lib.c");
     println!("cargo:rerun-if-changed=src/lib.rs");
 
     let mut bgen;

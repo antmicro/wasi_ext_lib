@@ -40,9 +40,9 @@
 #define _MAX_FD_NUM 1024
 
 // Extended fs_fdflags
-#define WASI_EXT_FDFLAG_CTRL_BIT (__wasi_fdflags_t)0x0020
-#define WASI_EXT_FDFLAG_MASK (__wasi_fdflags_t)0xffc0
-#define WASI_EXT_FDFLAG_CLOEXEC (__wasi_fdflags_t)0x0040
+#define WASI_EXT_FDFLAG_CTRL_BIT ((__wasi_fdflags_t)0x0020)
+#define WASI_EXT_FDFLAG_MASK ((__wasi_fdflags_t)0xffc0)
+#define WASI_EXT_FDFLAG_CLOEXEC ((__wasi_fdflags_t)0x0040)
 
 // Fnctl commands
 enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };
@@ -57,7 +57,6 @@ enum RedirectType {
     DUPLICATE,
     CLOSE
 };
-
 struct Redirect {
     union Data {
         struct Path {
@@ -79,11 +78,11 @@ struct Env {
 
 #ifdef HTERM
 typedef uint32_t WasiEvents;
-#define WASI_EVENTS_NUM (size_t)2
-#define WASI_EVENTS_MASK_SIZE (size_t)4 // number of bytes
+#define WASI_EVENTS_NUM ((size_t)2)
+#define WASI_EVENTS_MASK_SIZE ((size_t)4) // number of bytes
 // Hterm events
-#define WASI_EVENT_WINCH (WasiEvents)(1 << 0)
-#define WASI_EVENT_SIGINT (WasiEvents)(1 << 1)
+#define WASI_EVENT_WINCH ((WasiEvents)(1 << 0))
+#define WASI_EVENT_SIGINT ((WasiEvents)(1 << 1))
 #endif
 
 int wasi_ext_chdir(const char *);

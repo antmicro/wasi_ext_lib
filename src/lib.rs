@@ -77,10 +77,11 @@ pub enum Redirect {
     Close(Fd),
 }
 
+#[repr(i32)]
 pub enum TcsetattrAction {
-    TCSANOW,
-    TCSADRAIN,
-    TCSAFLUSH,
+    TCSANOW = termios::TCSANOW as i32,
+    TCSADRAIN = termios::TCSADRAIN as i32,
+    TCSAFLUSH = termios::TCSAFLUSH as i32,
 }
 
 impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
@@ -432,14 +433,12 @@ pub fn tcsetattr(
     act: TcsetattrAction,
     termios_p: &termios::termios,
 ) -> Result<(), ExitCode> {
-    let act_num = match act {
-        TcsetattrAction::TCSANOW => termios::TCSANOW,
-        TcsetattrAction::TCSADRAIN => termios::TCSADRAIN,
-        TcsetattrAction::TCSAFLUSH => termios::TCSAFLUSH,
-    } as c_int;
-
     let result = unsafe {
-        termios::wasi_ext_tcsetattr(fd as c_int, act_num, termios_p as *const termios::termios)
+        termios::wasi_ext_tcsetattr(
+            fd as c_int,
+            act as c_int,
+            termios_p as *const termios::termios,
+        )
     };
 
     if result == 0 {
