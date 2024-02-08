@@ -1,7 +1,7 @@
-diff --git a/library/std/src/sys/wasi/fs.rs b/library/std/src/sys/wasi/fs.rs
-index d4866bbc32b..8670e9c8e15 100644
---- a/library/std/src/sys/wasi/fs.rs
-+++ b/library/std/src/sys/wasi/fs.rs
+diff --git a/library/std/src/sys/pal/wasi/fs.rs b/library/std/src/sys/pal/wasi/fs.rs
+index e8238665452..5f77b656894 100644
+--- a/library/std/src/sys/pal/wasi/fs.rs
++++ b/library/std/src/sys/pal/wasi/fs.rs
 @@ -1,6 +1,7 @@
  #![deny(unsafe_op_in_unsafe_fn)]
  
@@ -10,7 +10,7 @@ index d4866bbc32b..8670e9c8e15 100644
  use crate::ffi::{CStr, OsStr, OsString};
  use crate::fmt;
  use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-@@ -649,10 +650,30 @@ fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result
+@@ -652,10 +653,30 @@ fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result
      Ok(FileAttr { meta })
  }
  
