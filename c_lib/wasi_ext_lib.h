@@ -39,6 +39,10 @@
 
 #define _MAX_FD_NUM 1024
 
+#define WGETGS _IOR(2, 0, 4)
+#define WGETRH _IO(2, 1)
+#define WGETRB _IO(2, 2)
+
 // Extended fs_fdflags
 #define WASI_EXT_FDFLAG_CTRL_BIT ((__wasi_fdflags_t)0x0020)
 #define WASI_EXT_FDFLAG_MASK ((__wasi_fdflags_t)0xffc0)

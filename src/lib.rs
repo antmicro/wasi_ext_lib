@@ -58,6 +58,10 @@ pub const WASI_EXT_FDFLAG_CTRL_BIT: wasi::Fdflags = 0x0020;
 pub const WASI_EXT_FDFLAG_MASK: wasi::Fdflags = 0xffc0;
 pub const WASI_EXT_FDFLAG_CLOEXEC: wasi::Fdflags = 0x0040;
 
+pub const WGETGS: c_ulong = 2147746304;
+pub const WGETRH: c_ulong = 513;
+pub const WGETRB: c_ulong = 514;
+
 pub use wasi::SIGNAL_KILL;
 
 type ExitCode = i32;
