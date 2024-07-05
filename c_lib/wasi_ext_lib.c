@@ -343,3 +343,17 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
 
     return -EINVAL;
 }
+
+int wasi_ext_mknod(const char *path, int dev) {
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "path", json_mkstring(path));
+    json_append_member(root, "dev", json_mknumber(dev));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("mknod", serialized, NULL, 0);
+    free(serialized);
+
+    return err;
+}

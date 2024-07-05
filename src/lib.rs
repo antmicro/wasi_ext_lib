@@ -419,6 +419,22 @@ pub fn umount(path: &str) -> Result<(), ExitCode> {
     }
 }
 
+pub fn mkdev(maj: i32, min: i32) -> i32 {
+    (maj << 20) | min
+}
+
+pub fn mknod(path: &str, dev: i32) -> Result<(), ExitCode> {
+    let c_path = CString::new(path).unwrap();
+
+    let result = unsafe { wasi_ext_lib_generated::wasi_ext_mknod(c_path.as_ptr(), dev) };
+
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(result)
+    }
+}
+
 pub fn tcgetattr(fd: Fd) -> Result<termios::termios, ExitCode> {
     let mut termios_p: termios::termios = unsafe { mem::zeroed() };
     let result = unsafe {

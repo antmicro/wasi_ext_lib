@@ -48,6 +48,8 @@
 #define WASI_EXT_FDFLAG_MASK ((__wasi_fdflags_t)0xffc0)
 #define WASI_EXT_FDFLAG_CLOEXEC ((__wasi_fdflags_t)0x0040)
 
+#define MKDEV(maj, min) ((maj << 20) | min)
+
 // Fnctl commands
 enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };
 
@@ -108,5 +110,6 @@ int wasi_ext_fcntl(int, enum FcntlCommand, void *);
 int wasi_ext_mount(int, const char *, int, const char *, const char *, uint64_t,
                    const char *);
 int wasi_ext_umount(const char *);
+int wasi_ext_mknod(const char *, int);
 
 #endif
