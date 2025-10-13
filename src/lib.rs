@@ -439,6 +439,31 @@ pub fn mknod(path: &str, dev: i32) -> Result<(), ExitCode> {
     }
 }
 
+pub fn uname() -> Result<String, ExitCode> {
+    const MAX_BUF_SIZE: usize = 65536;
+    let mut buf_size: usize = 256;
+    let mut buf = vec![0u8; buf_size];
+    while buf_size < MAX_BUF_SIZE {
+        match unsafe {
+            wasi_ext_lib_generated::wasi_ext_uname(buf.as_mut_ptr() as *mut i8, buf_size)
+        } {
+            0 => {
+                return Ok(String::from(
+                    str::from_utf8(&buf[..buf.iter().position(|&i| i == 0).unwrap()]).unwrap(),
+                ))
+            }
+            e => {
+                if e != wasi::ERRNO_NOBUFS.raw().into() {
+                    return Err(e);
+                };
+            }
+        };
+        buf_size *= 2;
+        buf.resize(buf_size, 0u8);
+    }
+    Err(wasi::ERRNO_NAMETOOLONG.raw().into())
+}
+
 pub fn tcgetattr(fd: Fd) -> Result<termios::termios, ExitCode> {
     let mut termios_p: termios::termios = unsafe { mem::zeroed() };
     let result = unsafe {
