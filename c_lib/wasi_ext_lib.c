@@ -357,3 +357,15 @@ int wasi_ext_mknod(const char *path, int dev) {
 
     return err;
 }
+
+int wasi_ext_uname(char *path, size_t buf_len) {
+    JsonNode *root = json_mkobject();
+    json_append_member(root, "buf_len", json_mknumber((double)buf_len));
+
+    char *serialized = json_stringify(0, root, " ");
+    json_delete(root);
+
+    int err = __syscall("uname", serialized, (uint8_t *)path, buf_len);
+    free(serialized);
+    return err;
+}
