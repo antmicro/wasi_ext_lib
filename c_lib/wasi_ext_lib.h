@@ -59,6 +59,18 @@
 // Fnctl commands
 enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };
 
+enum UnameNameType {
+    HREF = 0,
+    PROTOCOL,
+    HOST,
+    PORT,
+    PATHNAME,
+    SEARCH,
+    HASH,
+    ORIGIN,
+    USER_AGENT
+};
+
 enum RedirectType {
     READ,
     WRITE,
@@ -117,6 +129,6 @@ int wasi_ext_mount(int, const char *, int, const char *, const char *, uint64_t,
                    const char *);
 int wasi_ext_umount(const char *);
 int wasi_ext_mknod(const char *, int);
-int wasi_ext_uname(char *, size_t);
+int wasi_ext_uname(char *, size_t, enum UnameNameType);
 
 #endif

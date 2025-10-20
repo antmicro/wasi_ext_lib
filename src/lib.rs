@@ -438,14 +438,31 @@ pub fn mknod(path: &str, dev: i32) -> Result<(), ExitCode> {
         Err(result)
     }
 }
+#[repr(u32)]
+#[derive(Copy, Clone)]
+pub enum NameType {
+    Href = wasi_ext_lib_generated::UnameNameType_HREF,
+    Protocol = wasi_ext_lib_generated::UnameNameType_PROTOCOL,
+    Host = wasi_ext_lib_generated::UnameNameType_HOST,
+    Port = wasi_ext_lib_generated::UnameNameType_PORT,
+    Pathname = wasi_ext_lib_generated::UnameNameType_PATHNAME,
+    Search = wasi_ext_lib_generated::UnameNameType_SEARCH,
+    Hash = wasi_ext_lib_generated::UnameNameType_HASH,
+    Origin = wasi_ext_lib_generated::UnameNameType_ORIGIN,
+    UserAgent = wasi_ext_lib_generated::UnameNameType_USER_AGENT,
+}
 
-pub fn uname() -> Result<String, ExitCode> {
+pub fn uname(name_type: NameType) -> Result<String, ExitCode> {
     const MAX_BUF_SIZE: usize = 65536;
     let mut buf_size: usize = 256;
     let mut buf = vec![0u8; buf_size];
     while buf_size < MAX_BUF_SIZE {
         match unsafe {
-            wasi_ext_lib_generated::wasi_ext_uname(buf.as_mut_ptr() as *mut i8, buf_size)
+            wasi_ext_lib_generated::wasi_ext_uname(
+                buf.as_mut_ptr() as *mut i8,
+                buf_size,
+                name_type as u32,
+            )
         } {
             0 => {
                 return Ok(String::from(

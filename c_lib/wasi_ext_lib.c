@@ -358,9 +358,10 @@ int wasi_ext_mknod(const char *path, int dev) {
     return err;
 }
 
-int wasi_ext_uname(char *path, size_t buf_len) {
+int wasi_ext_uname(char *path, size_t buf_len, enum UnameNameType name_type) {
     JsonNode *root = json_mkobject();
     json_append_member(root, "buf_len", json_mknumber((double)buf_len));
+    json_append_member(root, "name_type", json_mknumber((double)name_type));
 
     char *serialized = json_stringify(0, root, " ");
     json_delete(root);
