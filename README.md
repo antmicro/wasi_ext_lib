@@ -32,8 +32,8 @@ git checkout beta
 git apply ../wasi_ext_lib/canonicalize.patch
 
 # build toolchain, remember to meet all dependencies required by Rust
-./configure --target=wasm32-wasi --disable-docs --set target.wasm32-wasi.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --enable-lld --tools=cargo
-./x.py build --target wasm32-wasi --target x86_64-unknown-linux-gnu --stage 1
+./configure --target=wasm32-wasip1 --disable-docs --set target.wasm32-wasip1.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --enable-lld --tools=cargo
+./x.py build --target wasm32-wasip1 --target x86_64-unknown-linux-gnu --stage 1
 
 # link toolchain and build `wasi_ext_lib`
 rustup toolchain link wasi_extended "$(pwd)/build/host/stage1"
@@ -45,7 +45,7 @@ If you choose to remove rust sources after building the toolchain, make sure tha
 After the toolchain is installed, the library can be compiled using:
 
 ```
-cargo +wasi_extended build --target wasm32-wasi --release
+cargo +wasi_extended build --target wasm32-wasip1 --release
 ```
 
 ### C library
