@@ -1,1 +1,1 @@
-include: jswasi-ci@main:ci/wasi_ext_lib.yml
+include: jswasi-ci-scripts@main:wasi_ext_lib.yml
