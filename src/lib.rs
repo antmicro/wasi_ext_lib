@@ -149,10 +149,10 @@ impl From<&Redirect> for wasi_ext_lib_generated::Redirect {
 }
 
 pub enum FcntlCommand {
-    // like F_DUPFD but it move fd insted of duplicating
-    F_MVFD { min_fd_num: Fd },
-    F_GETFD,
-    F_SETFD { flags: wasi::Fdflags },
+    // like F_DUPFD but it moves fd instead of duplicating
+    WASI_EXT_F_MVFD { min_fd_num: Fd },
+    WASI_EXT_F_GETFD,
+    WASI_EXT_F_SETFD { flags: wasi::Fdflags },
 }
 
 pub fn chdir<P: AsRef<Path>>(path: P) -> Result<(), ExitCode> {
@@ -346,27 +346,27 @@ pub fn ioctl<T>(fd: RawFd, command: c_ulong, arg: Option<&mut T>) -> Result<(), 
 }
 pub fn fcntl(fd: Fd, cmd: FcntlCommand) -> Result<i32, ExitCode> {
     let result = match cmd {
-        FcntlCommand::F_MVFD { min_fd_num } => unsafe {
+        FcntlCommand::WASI_EXT_F_MVFD { min_fd_num } => unsafe {
             let mut min_fd = min_fd_num;
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
-                wasi_ext_lib_generated::FcntlCommand_F_MVFD,
+                wasi_ext_lib_generated::FcntlCommand_WASI_EXT_F_MVFD,
                 (&mut min_fd as *mut u32) as *mut c_void,
             )
         },
-        FcntlCommand::F_GETFD => unsafe {
+        FcntlCommand::WASI_EXT_F_GETFD => unsafe {
             let null_ptr = ptr::null_mut::<c_void>();
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
-                wasi_ext_lib_generated::FcntlCommand_F_GETFD,
+                wasi_ext_lib_generated::FcntlCommand_WASI_EXT_F_GETFD,
                 null_ptr,
             )
         },
-        FcntlCommand::F_SETFD { flags } => unsafe {
+        FcntlCommand::WASI_EXT_F_SETFD { flags } => unsafe {
             let mut flags = flags;
             wasi_ext_lib_generated::wasi_ext_fcntl(
                 fd as c_int,
-                wasi_ext_lib_generated::FcntlCommand_F_SETFD,
+                wasi_ext_lib_generated::FcntlCommand_WASI_EXT_F_SETFD,
                 (&mut flags as *mut wasi::Fdflags) as *mut c_void,
             )
         },

@@ -57,7 +57,7 @@
 #define MKDEV(maj, min) ((maj << 20) | min)
 
 // Fnctl commands
-enum FcntlCommand { F_MVFD, F_GETFD, F_SETFD };
+enum FcntlCommand { WASI_EXT_F_MVFD, WASI_EXT_F_GETFD, WASI_EXT_F_SETFD };
 
 enum UnameNameType {
     HREF = 0,

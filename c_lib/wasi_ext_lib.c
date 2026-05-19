@@ -286,7 +286,7 @@ int wasi_ext_ioctl(int fd, unsigned int cmd, void *arg) {
 int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
     __wasi_errno_t err;
     switch (cmd) {
-    case F_MVFD: {
+    case WASI_EXT_F_MVFD: {
         int min_fd = *((int *)arg);
         __wasi_fdstat_t stat;
 
@@ -318,7 +318,7 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
         // like F_DUPFD, return allocated fd
         return min_fd;
     }
-    case F_GETFD: {
+    case WASI_EXT_F_GETFD: {
         __wasi_fdstat_t stat;
         err = __wasi_fd_fdstat_get(fd, &stat);
 
@@ -330,7 +330,7 @@ int wasi_ext_fcntl(int fd, enum FcntlCommand cmd, void *arg) {
 
         return (int)flags;
     }
-    case F_SETFD: {
+    case WASI_EXT_F_SETFD: {
         __wasi_fdflags_t flags = *((__wasi_fdflags_t *)arg);
         // set control bit to enable extended flags processing
         flags |= WASI_EXT_FDFLAG_CTRL_BIT;
