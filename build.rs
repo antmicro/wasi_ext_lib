@@ -9,8 +9,26 @@ const CLIB_THIRD_PARTY_DIR: &str = "c_lib/third_party";
 
 fn main() {
     let mut make = Command::new("make");
-    #[cfg(feature = "hterm")]
-    make.arg("CFLAGS=-DHTERM");
+
+    let mut cflags = Vec::new();
+    let rustflags = env::var("CARGO_ENCODED_RUSTFLAGS").unwrap_or_default();
+
+    if cfg!(feature = "hterm") {
+        cflags.push("-DHTERM");
+    }
+    if rustflags.contains("+atomics") {
+        cflags.push("-matomics");
+    }
+    if rustflags.contains("+bulk-memory") {
+        cflags.push("-mbulk-memory");
+    }
+    if rustflags.contains("+mutable_globals") {
+        cflags.push("-mmutable-globals");
+    }
+    if !cflags.is_empty() {
+        make.arg(format!("CFLAGS={}", cflags.join(" ")));
+    }
+
     if make
         .arg("-C")
         .arg(CLIB_DIR)
