@@ -123,6 +123,11 @@ int wasi_ext_spawn(const char *, const char *const *, size_t,
                    const struct Env *, size_t, int, const struct Redirect *,
                    size_t, int *);
 int wasi_ext_kill(int, int);
+
+/**
+  * @brief Custom ioctl syscall implementation.
+  * @return 0 on success, or a positive error code on failure (note the negation).
+ */
 int wasi_ext_ioctl(int, unsigned int, void *);
 int wasi_ext_fcntl(int, enum FcntlCommand, void *);
 int wasi_ext_mount(int, const char *, int, const char *, const char *, uint64_t,

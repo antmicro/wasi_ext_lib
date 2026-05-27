@@ -19,6 +19,10 @@
 #define SYSCALL_LENGTH 256
 #define SYSCALL_ARGS_LENGTH 2048
 
+/**
+  * @brief Helper function for defining custom syscalls. Uses WASI's path_readlink as a generic syscall interface.
+  * @return 0 on success, or a negative error code on failure.
+ */
 int __syscall(const char *command, char *args, uint8_t *output_buf,
               size_t output_buf_len) {
     char *ptr;

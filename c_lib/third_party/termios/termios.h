@@ -131,10 +131,34 @@ speed_t wasi_ext_cfgetispeed (const struct termios *);
 int wasi_ext_cfsetospeed (struct termios *, speed_t);
 int wasi_ext_cfsetispeed (struct termios *, speed_t);
 
+/**
+  * @brief Get the parameters associated with the terminal referred to by fd and store them in the termios structure pointed to by tio.
+  * @return 0 on success, or a negative error code on failure (note the negation).
+ */
 int wasi_ext_tcgetattr (int, struct termios *);
+
+/**
+  * @brief Set the parameters associated with the terminal from the termios structure pointed to by tio, for the terminal referred to by fd. The optional_actions argument specifies when the changes take effect.
+  *
+  * It maps the optional_actions argument to ioctl commands as follows:
+  * - TCSANOW: TCSETS
+  *   TCSADRAIN: TCSETSW
+  *   TCSAFLUSH: not supported
+  *
+  * @return 0 on success, or a negative error code on failure (note the negation).
+ */
 int wasi_ext_tcsetattr (int, int, const struct termios *);
 
+/**
+  * @brief Get the window size of the terminal referred to by fd and store it in the winsize structure pointed to by winsize_p.
+  * @return 0 on success, or a negative error code on failure (note the negation).
+ */
 int wasi_ext_tcgetwinsize (int, struct winsize *);
+
+/**
+  * @brief Set the window size of the terminal referred to by fd from the winsize structure pointed to by winsize_p.
+  * @return 0 on success, or a negative error code on failure (note the negation).
+ */
 int wasi_ext_tcsetwinsize (int, const struct winsize *);
 
 int wasi_ext_tcsendbreak (int, int);
