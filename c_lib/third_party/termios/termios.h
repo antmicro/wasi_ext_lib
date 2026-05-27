@@ -29,8 +29,8 @@ typedef unsigned int tcflag_t;
 // definitions from musl do not encode size of the parameters, so we need to extend them
 #define TCGETS      0x803c5401
 #define TCSETS      0x403c5402
-#define TCSETSW		0x5403
-#define TCSETSF		0x5404
+#define TCSETSW     0x403c5403
+#define TCSETSF     0x403c5404
 #define TCGETA		0x5405
 #define TCSETA		0x5406
 #define TCSETAW		0x5407

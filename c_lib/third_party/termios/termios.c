@@ -40,7 +40,10 @@ int wasi_ext_tcsetattr(int fd, int act, const struct termios *tio)
         cmd = TCSETS;
         break;
     }
-    case TCSADRAIN:
+    case TCSADRAIN: {
+        cmd = TCSETSW;
+        break;
+    }
     case TCSAFLUSH: {
         return -ENOTSUP;
         break;
