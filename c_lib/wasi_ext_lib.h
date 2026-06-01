@@ -125,8 +125,9 @@ int wasi_ext_spawn(const char *, const char *const *, size_t,
 int wasi_ext_kill(int, int);
 
 /**
-  * @brief Custom ioctl syscall implementation.
-  * @return 0 on success, or a positive error code on failure (note the negation).
+ * @brief Custom ioctl syscall implementation.
+ * @return 0 on success, or a positive error code on failure
+ * (note the negation).
  */
 int wasi_ext_ioctl(int, unsigned int, void *);
 int wasi_ext_fcntl(int, enum FcntlCommand, void *);
