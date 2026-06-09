@@ -31,9 +31,9 @@ cd rust
 git checkout beta
 git apply ../wasi_ext_lib/canonicalize.patch
 
-# build toolchain, remember to meet all dependencies required by Rust
-./configure --target=wasm32-wasip1 --disable-docs --set target.wasm32-wasip1.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --enable-lld --tools=cargo
-./x.py build --target wasm32-wasip1 --target x86_64-unknown-linux-gnu --stage 1
+# build toolchain for wasip1 and wasip1-threads targets, remember to meet all dependencies required by Rust
+./configure --target=wasm32-wasip1,wasm32-wasip1-threads --disable-docs ---set target.wasm32-wasip1.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --set target.wasm32-wasip1-threads.wasi-root=${WASI_SDK_PATH}/share/wasi-sysroot --enable-lld --tools=cargo
+./x.py build --target wasm32-wasip1,wasm32-wasip1-threads,x86_64-unknown-linux-gnu --stage 1
 
 # link toolchain and build `wasi_ext_lib`
 rustup toolchain link wasi_extended "$(pwd)/build/host/stage1"
@@ -42,10 +42,15 @@ rustup toolchain link wasi_extended "$(pwd)/build/host/stage1"
 Note that `rustup toolchain link` command only creates a symlink to the given target.
 If you choose to remove rust sources after building the toolchain, make sure that `stage1` directory is still under the linked path (the directory can be moved somewhere else and linked from there).
 
-After the toolchain is installed, the library can be compiled using:
+After the toolchain is installed, the library can be compiled for `wasm32-wasip1` target using:
 
 ```
 cargo +wasi_extended build --target wasm32-wasip1 --release
+```
+
+If you want to compile for `wasm32-wasip1-threads` instead, you need to add required flags:
+```
+RUSTFLAGS="-C target-feature=-crt-static,+atomics,+bulk-memory,+mutable-globals -C link-arg=--max-memory=4294967296" cargo +wasi_extended build --target wasm32-wasip1-threads --release
 ```
 
 ### C library
