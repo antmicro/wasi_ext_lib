@@ -1,6 +1,6 @@
 # Wasi Extended Library
 
-Copyright (c) 2022-2023 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2022-2026 [Antmicro](https://www.antmicro.com)
 
 This repository contains a custom API for syscalls that are not yet implemented in `wasi`.
 In order to keep compiled binaries compatible with other runtimes, these syscalls are not explicitly added to the [WASI standard](https://wasi.dev/).
