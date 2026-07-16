@@ -42,7 +42,8 @@ fn main() {
     };
     println!("cargo:rustc-link-search={CLIB_DIR}/bin/");
 
-    println!("cargo:rustc-link-lib=static=wasi_ext_lib");
+    // Link wasi_ext_lib with 'whole-archive' to ensure 'init_wasi_cwd' function is included
+    println!("cargo:rustc-link-lib=static:+whole-archive=wasi_ext_lib");
     println!("cargo:rerun-if-changed={CLIB_DIR}");
     println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios");
     println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/bits");

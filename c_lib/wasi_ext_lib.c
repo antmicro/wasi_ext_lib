@@ -375,3 +375,13 @@ int wasi_ext_uname(char *path, size_t buf_len, enum UnameNameType name_type) {
     free(serialized);
     return err;
 }
+
+// This function is called before main() to set the current working directory
+// of the process to the one returned by wasi_ext_getcwd.
+__attribute__((constructor, used)) static void init_wasi_cwd(void) {
+    char cwd[256];
+    if (wasi_ext_getcwd(cwd, sizeof(cwd)) == 0) {
+        wasi_ext_chdir(cwd);
+        chdir(cwd);
+    }
+}
