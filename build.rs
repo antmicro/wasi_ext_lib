@@ -29,9 +29,16 @@ fn main() {
         make.arg(format!("CFLAGS={}", cflags.join(" ")));
     }
 
+    let make_target = if cfg!(feature = "c_sup") {
+        "all"
+    } else {
+        "wasi_ext_lib"
+    };
+
     if make
         .arg("-C")
         .arg(CLIB_DIR)
+        .arg(make_target)
         .status()
         .expect("Could not build C library")
         .code()
@@ -44,6 +51,11 @@ fn main() {
 
     // Link wasi_ext_lib with 'whole-archive' to ensure 'init_wasi_cwd' function is included
     println!("cargo:rustc-link-lib=static:+whole-archive=wasi_ext_lib");
+
+    if cfg!(feature = "c_sup") {
+        println!("cargo:rustc-link-lib=static:+whole-archive=wasi_c_sup");
+    }
+
     println!("cargo:rerun-if-changed={CLIB_DIR}");
     println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios");
     println!("cargo:rerun-if-changed={CLIB_THIRD_PARTY_DIR}/termios/bits");
@@ -83,4 +95,24 @@ fn main() {
     .expect("Unable to generate bindings")
     .write_to_file("src/wasi_ext_lib_generated.rs")
     .expect("could not write bindings");
+
+    if cfg!(feature = "c_sup") {
+        bgen = bindgen::Builder::default().header(format!(
+            "{CLIB_THIRD_PARTY_DIR}/wasi_c_sup/include/wasi_c_sup.h"
+        ));
+        bgen.clang_arg(format!(
+            "--sysroot={}/share/wasi-sysroot",
+            env!("WASI_SDK_PATH")
+        ))
+        .clang_arg(format!("-I{CLIB_DIR}"))
+        .clang_arg(format!("-I{CLIB_THIRD_PARTY_DIR}"))
+        .clang_arg(format!("-I{CLIB_THIRD_PARTY_DIR}/wasi_c_sup/include"))
+        .clang_arg("-D_WASI_EMULATED_SIGNAL")
+        .clang_arg("-fvisibility=default")
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .generate()
+        .expect("Unable to generate bindings")
+        .write_to_file("src/wasi_c_sup_generated.rs")
+        .expect("could not write wasi_c_sup bindings");
+    }
 }

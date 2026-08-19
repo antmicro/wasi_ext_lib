@@ -33,6 +33,11 @@ pub use wasi_ext_lib_generated::WasiEvents;
 pub mod termios_generated;
 pub use termios_generated as termios;
 
+#[cfg(feature = "c_sup")]
+pub mod wasi_c_sup_generated;
+#[cfg(feature = "c_sup")]
+pub use wasi_c_sup_generated as wasi_c_sup;
+
 // #[cfg(feature = "hterm")]
 // pub use wasi_ext_lib_generated::{
 //      WASI_EVENT_SIGINT, WASI_EVENTS_NUM
