@@ -7,12 +7,12 @@
 
 speed_t wasi_ext_cfgetospeed (const struct termios * termios_p)
 {
-    return -ENOTSUP;
+    return B38400;
 }
 
 speed_t wasi_ext_cfgetispeed (const struct termios * termios_p)
 {
-    return -ENOTSUP;
+    return B38400;
 }
 
 int wasi_ext_cfsetospeed (struct termios * termios_p, speed_t speed)
