@@ -3,8 +3,8 @@
 // https://github.com/WebAssembly/wasi-libc/blob/main/libc-top-half/musl/include/termios.h
 // https://github.com/WebAssembly/wasi-libc/blob/main/libc-top-half/musl/arch/generic/bits/termios.h
 
-#ifndef	_TERMIOS_H
-#define	_TERMIOS_H
+#ifndef _TERMIOS_H
+#define _TERMIOS_H
 
 #include <features.h>
 
@@ -12,7 +12,6 @@
 #define __NEED_struct_winsize
 
 #include <bits/alltypes.h>
-
 
 typedef unsigned char cc_t;
 typedef unsigned int speed_t;
