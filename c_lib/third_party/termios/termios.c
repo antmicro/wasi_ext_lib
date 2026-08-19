@@ -1,10 +1,9 @@
-
 /* SPDX-License-Identifier: MIT */
 
 #include "termios.h"
 #include <errno.h>
 
-#include "../../wasi_ext_lib.h"
+#include <wasi_ext_lib.h>
 
 speed_t wasi_ext_cfgetospeed (const struct termios * termios_p)
 {
