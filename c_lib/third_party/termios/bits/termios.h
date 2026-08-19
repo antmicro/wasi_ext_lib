@@ -1,5 +1,16 @@
 /* SPDX-License-Identifier: MIT */
 
+#ifndef _BITS_TERMIOS_H
+#define _BITS_TERMIOS_H
+
+typedef unsigned char cc_t;
+typedef unsigned int speed_t;
+typedef unsigned int tcflag_t;
+
+#ifndef NCCS
+#define NCCS 32
+#endif
+
 struct termios {
 	tcflag_t c_iflag;
 	tcflag_t c_oflag;
@@ -125,3 +136,5 @@ struct termios {
 #define TCSANOW   0
 #define TCSADRAIN 1
 #define TCSAFLUSH 2
+
+#endif
