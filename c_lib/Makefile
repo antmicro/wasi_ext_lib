@@ -4,9 +4,9 @@ third_party_dir := third_party
 ar = ${WASI_SDK_PATH}/bin/ar
 cc = ${WASI_SDK_PATH}/bin/clang
 
-all: archive c_sup
+all: wasi_ext_lib c_sup
 
-archive: wasi_ext_lib.o json.o termios.o wasi-sdk-path
+wasi_ext_lib: wasi_ext_lib.o json.o termios.o wasi-sdk-path
 	$(ar) rcs $(bin_dir)/libwasi_ext_lib.a $(bin_dir)/wasi_ext_lib.o $(bin_dir)/json.o $(bin_dir)/termios.o
 
 wasi_ext_lib.o: $(bin_dir) wasi-sdk-path
