@@ -17,6 +17,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <readpassphrase.h>
+#include <ctype.h>
 #include <wasi/libc.h>
 #include <wasi_ext_lib.h>
 #include <third_party/termios/termios.h>
@@ -627,60 +629,110 @@ void errx(int status, const char* format, ...) {
 
 // Prompt
 
-#ifndef RPP_ECHO_ON
-#define RPP_ECHO_ON 1
+#ifndef _PATH_TTY
+#define _PATH_TTY "/dev/tty"
 #endif
 
+// From OpenBSD's readpassphrase.c - modified
 char *readpassphrase(const char *prompt, char *buf, size_t buf_len, int flags) {
-  struct termios termios = {0};
-  wasi_ext_tcgetattr(STDERR_FILENO, &termios);
+  ssize_t nr;
+	int input, output, save_errno, i;
+	char ch, *p, *end;
+	struct termios term, oterm;
+	struct sigaction sa, savealrm, saveint, savehup, savequit, saveterm;
+	struct sigaction savetstp, savettin, savettou, savepipe;
 
-  size_t old_len = strlen(prompt);
-  char *new_prompt = NULL;
-  const char *prompt_to_write = prompt;
-  size_t prompt_len = old_len;
+	/* I suppose we could alloc on demand in this case (XXX). */
+	if (buf_len == 0) {
+		errno = EINVAL;
+		return(NULL);
+	}
 
-  if ((termios.c_oflag & OPOST) && (termios.c_oflag & ONLCR)) {
-    new_prompt = malloc((old_len * 2) + 1);
-    if (new_prompt) {
-      size_t new_i = 0;
-      for (size_t old_i = 0; old_i < old_len; old_i++) {
-        char c = prompt[old_i];
-        if (c == '\n') {
-          new_prompt[new_i++] = '\r';
-        }
-        new_prompt[new_i++] = c;
-      }
-      new_prompt[new_i] = '\0';
-      prompt_to_write = new_prompt;
-      prompt_len = new_i;
-    }
-  }
+	nr = -1;
+	save_errno = 0;
+	/*
+	 * Read and write to /dev/tty if available.  If not, read from
+	 * stdin and write to stderr unless a tty is required.
+	 */
+	if ((flags & RPP_STDIN) ||
+	    (input = output = open(_PATH_TTY, O_RDWR)) == -1) {
+		if (flags & RPP_REQUIRE_TTY) {
+			errno = ENOTTY;
+			return(NULL);
+		}
+		input = STDIN_FILENO;
+		output = STDERR_FILENO;
+	}
 
-  // Write prompt to stderr
-  const char *p = prompt_to_write;
-  size_t remaining = prompt_len;
-  while (remaining > 0) {
-    ssize_t written = write(STDERR_FILENO, p, remaining);
-    if (written < 0) {
-      if (errno == EINTR)
-        continue;
-      break;
-    }
-    p += written;
-    remaining -= written;
-  }
+	/*
+	 * Turn off echo if possible.
+	 * If we are using a tty but are not the foreground pgrp this will
+	 * generate SIGTTOU, so do it *before* installing the signal handlers.
+	 */
+	if (input != STDIN_FILENO && wasi_ext_tcgetattr(input, &oterm) == 0) {
+		memcpy(&term, &oterm, sizeof(term));
+		if (!(flags & RPP_ECHO_ON))
+			term.c_lflag &= ~(ECHO | ECHONL);
+		(void)wasi_ext_tcsetattr(input, TCSAFLUSH, &term);
+	} else {
+		memset(&term, 0, sizeof(term));
+		term.c_lflag |= ECHO;
+		memset(&oterm, 0, sizeof(oterm));
+		oterm.c_lflag |= ECHO;
+	}
 
-  if (new_prompt) {
-    free(new_prompt);
-  }
+	/*
+	 * Catch signals that would otherwise cause the user to end
+	 * up with echo turned off in the shell.  Don't worry about
+	 * things like SIGXCPU and SIGVTALRM for now.
+	 */
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = 0;		/* don't restart system calls */
+	(void)sigaction(SIGALRM, &sa, &savealrm);
+	(void)sigaction(SIGHUP, &sa, &savehup);
+	(void)sigaction(SIGINT, &sa, &saveint);
+	(void)sigaction(SIGPIPE, &sa, &savepipe);
+	(void)sigaction(SIGQUIT, &sa, &savequit);
+	(void)sigaction(SIGTERM, &sa, &saveterm);
 
-  char *ret = _readpassphrase(prompt_to_write, buf, buf_len,
-                                   !!(flags & RPP_ECHO_ON));
+	if (!(flags & RPP_STDIN))
+		(void)write(output, prompt, strlen(prompt));
+	end = buf + buf_len - 1;
+	p = buf;
+	while ((nr = read(input, &ch, 1)) == 1 && ch != '\n' && ch != '\r') {
+		if (p < end) {
+			if ((flags & RPP_SEVENBIT))
+				ch &= 0x7f;
+			if (isalpha((unsigned char)ch)) {
+				if ((flags & RPP_FORCELOWER))
+					ch = (char)tolower((unsigned char)ch);
+				if ((flags & RPP_FORCEUPPER))
+					ch = (char)toupper((unsigned char)ch);
+			}
+			*p++ = ch;
+		}
+	}
+	*p = '\0';
+	save_errno = errno;
+	if (!(term.c_lflag & ECHO))
+		(void)write(output, "\n", 1);
 
-  write(STDERR_FILENO, "\r\n", 2);
+	/* Restore old terminal settings and signals. */
+	if (memcmp(&term, &oterm, sizeof(term)) != 0) {
+    (void)wasi_ext_tcsetattr(input, TCSAFLUSH, &oterm);
+	}
+	(void)sigaction(SIGALRM, &savealrm, NULL);
+	(void)sigaction(SIGHUP, &savehup, NULL);
+	(void)sigaction(SIGINT, &saveint, NULL);
+	(void)sigaction(SIGQUIT, &savequit, NULL);
+	(void)sigaction(SIGPIPE, &savepipe, NULL);
+	(void)sigaction(SIGTERM, &saveterm, NULL);
+	if (input != STDIN_FILENO)
+		(void)close(input);
 
-  return ret;
+	if (save_errno)
+		errno = save_errno;
+	return(nr == -1 ? NULL : buf);
 }
 
 // Signal handling
