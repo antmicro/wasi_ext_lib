@@ -162,7 +162,7 @@ int sock_sendto(__wasi_fd_t sock,
   return write(sock, buf, len);
 }
 
-int sock_connect(__wasi_fd_t sock, int domain, const uint8_t *addr,
+__attribute__((weak)) int sock_connect(__wasi_fd_t sock, int domain, const uint8_t *addr,
                  uint16_t port) {
     errno = ENOSYS;
     return -1;
